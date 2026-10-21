@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reguly Infó</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg0:#0b0704;--bg1:#2b1a0d;--brown:#5a3a1a;--brown-dk:#3a2410;--gold:#f2c14e;--gold-hi:#ffe9a3;--gold-lo:#9b6a16;--text-dim:#d9b46a;
+  --font:"Cinzel",Georgia,"Times New Roman",serif}
+*{box-sizing:border-box}
+html,body{margin:0}
+html{background:var(--bg0)}
+body{min-height:100vh;font-family:var(--font);font-weight:700;color:var(--gold-hi);
+  background:repeating-linear-gradient(45deg,rgba(255,200,90,.025) 0 2px,transparent 2px 8px),radial-gradient(ellipse at 50% 35%,var(--bg1) 0%,var(--bg0) 72%);
+  background-attachment:fixed;overflow-x:hidden}
+main{max-width:1100px;margin:0 auto;padding:clamp(24px,5vh,52px) 18px 70px;text-align:center}
+.school{margin:0 0 12px;font-size:clamp(11px,1.4vw,15px);letter-spacing:.1em;color:var(--text-dim)}
+h1{margin:0;font-weight:900;letter-spacing:.12em;font-size:clamp(30px,7vw,64px);color:var(--gold);text-shadow:0 3px 0 var(--brown),0 0 22px rgba(242,193,78,.4)}
+.lead{margin:16px auto clamp(24px,4vh,42px);max-width:50ch;color:var(--text-dim);font-size:clamp(14px,1.8vw,18px);letter-spacing:.04em}
+h2{margin:0 0 16px;font-size:clamp(14px,1.8vw,18px);font-weight:700;letter-spacing:.08em;color:var(--text-dim)}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:4px solid #fff;outline-offset:4px}
+
+.grades{display:flex;flex-wrap:wrap;justify-content:center;gap:16px;margin-bottom:clamp(26px,4vh,42px)}
+.grade{min-width:84px;height:84px;padding:0 16px;font:900 2.2rem/1 var(--font);letter-spacing:.04em;color:var(--gold);
+  background:linear-gradient(var(--brown),var(--brown-dk));border:3px solid var(--gold-lo);border-radius:12px;
+  box-shadow:0 6px 0 #1a0f07,inset 0 2px 0 rgba(255,233,163,.18);transition:transform .08s,box-shadow .08s,filter .2s}
+.grade.all{font-size:1.15rem}
+.grade:hover{filter:brightness(1.2);border-color:var(--gold)}
+.grade:active{transform:translateY(5px);box-shadow:0 1px 0 #1a0f07}
+.grade[aria-pressed=true]{color:#2a1704;text-shadow:0 1px 0 #ffeeb8;background:linear-gradient(#ffe590 0%,#e4ac32 48%,#a8741a 100%);border-color:#5a3a0e;
+  box-shadow:0 6px 0 #4a2c08,0 0 34px rgba(242,193,78,.55),inset 0 3px 0 rgba(255,255,255,.55)}
+
+.tabs{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:38px}
+.tab{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:clamp(13px,1.6vw,16px);font-weight:900;letter-spacing:.08em;color:var(--text-dim);
+  background:linear-gradient(#1a0f07,#090502);border:2px solid var(--brown);border-radius:8px;box-shadow:inset 0 0 20px rgba(0,0,0,.8)}
+.tab::before{content:"";width:9px;height:9px;background:var(--gold-lo);transform:rotate(45deg)}
+.tab.cur{color:var(--gold);border-color:var(--gold-lo)}
+.tab.cur::before{background:var(--gold)}
+.tab:hover{border-color:var(--gold-lo);color:var(--gold-hi)}
+.tab[aria-pressed=true]{color:var(--gold-hi);border-color:var(--gold);box-shadow:inset 0 0 20px rgba(0,0,0,.8),0 0 18px rgba(242,193,78,.35)}
+.tab[aria-pressed=true]::before{background:var(--gold)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:28px;text-align:left}
+.card{position:relative;display:flex;flex-direction:column;gap:12px;padding:20px 20px 24px;overflow:hidden;
+  background:linear-gradient(#1a0f07,#090502);border:6px double var(--gold-lo);border-radius:10px;
+  box-shadow:inset 0 0 60px rgba(0,0,0,.95),0 0 22px rgba(242,193,78,.12)}
+.card::before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(rgba(255,255,255,.035) 0 1px,transparent 1px 4px)}
+.card.now{border-color:var(--gold);box-shadow:inset 0 0 60px rgba(0,0,0,.95),0 0 34px rgba(242,193,78,.4)}
+.head{display:flex;align-items:center;gap:14px}
+.ico{flex:none;width:62px;height:62px;display:grid;place-items:center;font-size:1.9rem;background:var(--bg0);border:3px double var(--gold-lo);border-radius:8px;box-shadow:inset 0 0 14px rgba(0,0,0,.9)}
+.tag{color:var(--text-dim);font-size:.95rem;letter-spacing:.08em}
+.badge{display:inline-block;margin-top:5px;padding:2px 10px;color:#2a1704;font-weight:900;font-size:.8rem;letter-spacing:.06em;
+  background:linear-gradient(#ffe590,#e4ac32 55%,#a8741a);border:2px solid #5a3a0e;border-radius:6px;animation:pulse 2.2s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 18px rgba(242,193,78,.85)}}
+@media (prefers-reduced-motion:reduce){.badge{animation:none}}
+h3{margin:0;font-size:1.35rem;line-height:1.2;font-weight:900;letter-spacing:.04em;color:#e9c987;text-shadow:0 3px 0 var(--brown-dk)}
+.card.now h3{color:var(--gold-hi)}
+.card p{margin:0;color:var(--text-dim);font-size:.95rem;line-height:1.55;letter-spacing:.02em}
+.slots{display:flex;align-items:center;gap:6px;color:var(--text-dim);font-size:.8rem;letter-spacing:.08em}
+.slot{width:30px;height:30px;display:grid;place-items:center;font-size:.9rem;font-weight:900;color:var(--brown);border:2px solid var(--brown);border-radius:6px}
+.slot.on{color:#2a1704;background:linear-gradient(#ffe590,#e4ac32);border-color:#5a3a0e}
+.btns{display:flex;flex-wrap:wrap;gap:14px;margin:6px 0 6px}
+.btn{flex:1 1 auto;min-height:52px;display:flex;align-items:center;justify-content:center;text-align:center;padding:6px 16px;
+  font-size:.95rem;font-weight:900;letter-spacing:.06em;text-decoration:none;color:var(--gold-hi);
+  background:linear-gradient(var(--brown),var(--brown-dk));border:3px solid var(--gold-lo);border-radius:12px;
+  box-shadow:0 6px 0 #1a0f07,inset 0 2px 0 rgba(255,233,163,.18);transition:transform .08s,box-shadow .08s,filter .2s}
+.btn:hover{filter:brightness(1.15);border-color:var(--gold)}
+.btn:first-child{color:#2a1704;text-shadow:0 1px 0 #ffeeb8;background:linear-gradient(#ffe590 0%,#e4ac32 48%,#a8741a 100%);border-color:#5a3a0e;
+  box-shadow:0 6px 0 #4a2c08,0 0 30px rgba(242,193,78,.45),inset 0 3px 0 rgba(255,255,255,.55)}
+.btn:active{transform:translateY(5px);box-shadow:0 1px 0 #1a0f07}
+.msg{margin:0 auto;max-width:50ch;padding:22px;color:var(--text-dim);background:linear-gradient(#1a0f07,#090502);border:5px double var(--brown);border-radius:10px}
+.demo{margin-top:40px;color:var(--text-dim);font-size:.85rem;opacity:.85}
+</style>
+</head>
+<body>
+<main>
+  <p class="school">Szombathelyi Reguly Antal Nyelvoktató Nemzetiségi Általános Iskola</p>
+  <h1>Reguly Infó</h1>
+  <p class="lead">Válaszd ki az évfolyamod, és nyisd meg az aktuális feladatot.</p>
+
+  <h2 id="gl">Hányadikos vagy?</h2>
+  <div class="grades" id="grades" role="group" aria-labelledby="gl"></div>
+
+  <div class="tabs" id="topics" role="group" aria-label="Téma"></div>
+
+  <div id="out" class="grid" aria-live="polite"></div>
+  <p class="demo" id="demo" hidden>Ez minta tartalom. Add meg a táblázat azonosítóját a fájl elején (SHEET_ID), és a saját anyagaid jelennek meg.</p>
+</main>
+
+<script>
+/* ===== BEÁLLÍTÁS ===== */
+const SHEET_ID = "";          // a táblázat URL-jében a /d/ és a /edit közötti rész
+const SHEET_NAME = "Anyagok"; // a lap neve
+const SHEET_CSV_URL = "";     // opcionális: közzétett CSV-cím, ha nem a SHEET_ID-t használod
+const GRADES = [5, 6, 7, 8];
+const DEFAULT_TO_CURRENT = true; // true: induláskor az "Aktuális" fül nyílik meg (ha van aktuális anyag)
+
+/* Minta adatok, amíg nincs megadva táblázat */
+const SAMPLE = `Cím,Leírás,Téma,Évfolyam,Ikon,Dátum,Aktuális,Gomb1,Link1,Gomb2,Link2
+Kalózjáték,Kincskeresés koordinátákkal. Nyisd meg és játssz!,Játék,5-8,🏴‍☠️,2026-10-12,igen,Megnyitás,https://bizsolt.github.io/kalozjatek/,,
+Scratch: koordinátarendszer,Mozgasd a figurát a koordináták szerint.,Scratch,5-6,🐱,2026-09-28,,Scratch megnyitása,https://scratch.mit.edu/,,
+Időjárási adatok,Dolgozz a hőmérsékleti adatokkal Excelben.,Excel,7-8,🌦️,2026-09-14,,Excel letöltése,https://docs.google.com/spreadsheets/d/1FQw_NLVG-oy0etP8IYOmCxSatKTY4MZrbYOQd_vrpSk/export?format=xlsx,,
+Statisztika,Átlag és szélsőértékek: számolj Excelben!,Excel,6-8,📊,2026-09-21,,Excel letöltése,https://docs.google.com/spreadsheets/d/1WLeJe5T2LvZyl4TPw7Y8b4d_DPKwoQ7o37iIkrEvu48/export?format=xlsx,,
+Időkapszula,Írj üzenetet a jövőbeli önmagadnak.,Űrlap,,⏳,2026-06-01,,Kitöltöm,https://docs.google.com/forms/d/e/1FAIpQLSfNxeOvRFrTwzZCENJkuIXBeyOOo68-r1XpsyqJRDjYve5vnA/viewform,,`;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+const safeUrl = u => /^https?:\/\//i.test((u || "").trim()) ? u.trim() : "";
+
+function parseCSV(t) {
+  const rows = []; let r = [], f = "", q = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { r.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && t[i + 1] === "\n") i++; r.push(f); rows.push(r); r = []; f = ""; }
+    else f += c;
+  }
+  if (f || r.length) { r.push(f); rows.push(r); }
+  return rows;
+}
+
+function parseGrades(s) {
+  s = (s || "").trim().replace(/\s*[-–]\s*/g, "-");
+  const out = new Set();
+  s.split(/[,;\s]+/).forEach(p => {
+    const m = p.match(/^(\d+)-(\d+)$/);
+    if (m) for (let g = +m[1]; g <= +m[2]; g++) out.add(g);
+    else if (/^\d+$/.test(p)) out.add(+p);
+  });
+  return out.size ? [...out].sort((a, b) => a - b) : GRADES.slice();
+}
+
+function toItems(all) {
+  const rows = all.filter(r => r.some(c => c.trim()));
+  const head = rows.shift().map(norm);
+  const get = (r, n) => (head.indexOf(n) > -1 ? (r[head.indexOf(n)] || "").trim() : "");
+  return rows.map((r, idx) => {
+    const dm = get(r, "datum").match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+    const btns = [1, 2, 3, 4].map(n => [get(r, "gomb" + n), safeUrl(get(r, "link" + n))])
+      .filter(b => b[1]).map(b => ({ label: b[0] || "Megnyitás", url: b[1] }));
+    return {
+      idx, title: get(r, "cim"), desc: get(r, "leiras"), topic: get(r, "tema") || "Egyéb",
+      grades: parseGrades(get(r, "evfolyam")), icon: get(r, "ikon") || "📌",
+      date: dm ? Date.UTC(+dm[1], +dm[2] - 1, +dm[3]) : 0, now: /^(igen|x|1|true)$/i.test(get(r, "aktualis")), btns
+    };
+  }).filter(it => it.title)
+    .sort((a, b) => (b.now - a.now) || (b.date - a.date) || (b.idx - a.idx));
+}
+
+const NOW = "__now";
+let items = [], state = { grade: null, topic: DEFAULT_TO_CURRENT ? NOW : null };
+try { const g = +localStorage.getItem("reguly-grade"); if (GRADES.includes(g)) state.grade = g; } catch (e) {}
+
+function render() {
+  const byGrade = items.filter(it => !state.grade || it.grades.includes(state.grade));
+  const topics = [...new Set(byGrade.map(it => it.topic))].sort((a, b) => a.localeCompare(b, "hu"));
+  const hasNow = byGrade.some(it => it.now);
+  if (state.topic === NOW ? !hasNow : (state.topic && !topics.includes(state.topic))) state.topic = null;
+
+  $("grades").innerHTML = [["Mind", null], ...GRADES.map(g => [g + ".", g])].map(([l, g]) =>
+    `<button class="grade${g ? "" : " all"}" data-g="${g ?? ""}" aria-pressed="${state.grade === g}">${l}</button>`).join("");
+  $("topics").innerHTML = [...(hasNow ? [["Aktuális", NOW]] : []), ["Összes", null], ...topics.map(t => [t, t])].map(([l, t]) =>
+    `<button class="tab${t === NOW ? " cur" : ""}" data-t="${esc(t ?? "")}" aria-pressed="${state.topic === t}">${esc(l)}</button>`).join("");
+
+  const shown = byGrade.filter(it => !state.topic || (state.topic === NOW ? it.now : it.topic === state.topic));
+  $("out").innerHTML = shown.length ? shown.map(it => `
+    <article class="card${it.now ? " now" : ""}">
+      <div class="head">
+        <span class="ico" aria-hidden="true">${esc(it.icon)}</span>
+        <div><div class="tag">${esc(it.topic)}</div>${it.now ? '<div class="badge">Aktuális feladat</div>' : ""}</div>
+      </div>
+      <h3>${esc(it.title)}</h3>
+      ${it.desc ? `<p>${esc(it.desc)}</p>` : ""}
+      <div class="slots" role="img" aria-label="Évfolyamok: ${it.grades.join(", ")}">Évfolyam ${GRADES.map(g => `<span class="slot${it.grades.includes(g) ? " on" : ""}">${g}</span>`).join("")}</div>
+      ${it.btns.length ? `<div class="btns">${it.btns.map(b => `<a class="btn" href="${esc(b.url)}" target="_blank" rel="noopener">${esc(b.label)}</a>`).join("")}</div>` : ""}
+    </article>`).join("")
+    : `<div class="msg">Ehhez a választáshoz még nincs anyag. Próbálj ki másik témát vagy évfolyamot.</div>`;
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("button.grade, button.tab"); if (!b) return;
+  if (b.dataset.g !== undefined) {
+    state.grade = b.dataset.g ? +b.dataset.g : null;
+    try { state.grade ? localStorage.setItem("reguly-grade", state.grade) : localStorage.removeItem("reguly-grade"); } catch (err) {}
+  } else state.topic = b.dataset.t || null;
+  render();
+});
+
+/* Google Táblázat beolvasása (gviz, szkript-betöltéssel, CORS nélkül) */
+let jid = 0;
+function getSheet() {
+  return new Promise((resolve, reject) => {
+    const cb = "__gv" + (jid++), el = document.createElement("script");
+    const done = () => { delete window[cb]; el.remove(); };
+    window[cb] = resp => {
+      done();
+      if (resp.status !== "ok") return reject(new Error((resp.errors && resp.errors[0] && (resp.errors[0].detailed_message || resp.errors[0].message)) || "ismeretlen táblázathiba"));
+      const head = resp.table.cols.map(c => c.label || "");
+      const rows = resp.table.rows.map(r => r.c.map(c => (c && c.v != null) ? (c.f != null ? String(c.f) : String(c.v)) : ""));
+      resolve([head, ...rows]);
+    };
+    el.onload = () => { if (window[cb]) { done(); reject(new Error("a „" + SHEET_NAME + "” lap nem érhető el: a fájl nem natív Google Táblázat, vagy nincs megosztva („Bárki, akinek megvan a link”)")); } };
+    el.onerror = () => { done(); reject(new Error("a táblázat nem tölthető be (hálózati hiba vagy rossz SHEET_ID)")); };
+    el.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=responseHandler:${cb}&sheet=${encodeURIComponent(SHEET_NAME)}&headers=1`;
+    document.head.appendChild(el);
+  });
+}
+
+(async function init() {
+  try {
+    let rows;
+    if (SHEET_ID) rows = await getSheet();
+    else if (SHEET_CSV_URL) {
+      const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      rows = parseCSV(await res.text());
+    } else { rows = parseCSV(SAMPLE); $("demo").hidden = false; }
+    items = toItems(rows);
+    render();
+  } catch (err) {
+    console.error(err);
+    $("out").innerHTML = `<div class="msg">Nem sikerült betölteni a listát: ${esc(err.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>
