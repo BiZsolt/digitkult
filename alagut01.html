@@ -28,7 +28,20 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 #hull{display:flex;gap:6px}
 .pip{width:20px;height:20px;transform:rotate(45deg) scale(.8);border:2px solid var(--gold-lo);background:var(--gold);box-shadow:0 0 10px rgba(242,193,78,.6)}
 .pip.off{background:#1a0f07;box-shadow:none;border-color:var(--brown)}
-#prog{position:absolute;left:0;top:-5px;height:5px;width:0;background:var(--gold);box-shadow:0 0 12px var(--gold)}
+#ptop{position:fixed;left:0;right:0;top:0;height:30px;background:linear-gradient(#1a0f07,#090502);border-bottom:4px double var(--gold-lo);box-shadow:0 10px 30px rgba(0,0,0,.8);overflow:hidden}
+#prog{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(#ffe590,#e4ac32 50%,#a8741a);box-shadow:0 0 14px rgba(242,193,78,.6)}
+#pct{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:900;letter-spacing:.14em;color:var(--gold-hi);mix-blend-mode:difference}
+#qz{position:fixed;inset:0;display:none;place-items:center;padding:16px;background:rgba(11,7,4,.55);overflow:auto}
+#qz.on{display:grid}
+#qz .panel{max-width:720px}
+.q{font-size:clamp(18px,2.8vw,26px)!important;color:var(--gold-hi)!important;font-weight:900;line-height:1.35!important;margin:0 0 16px!important}
+.ans{display:flex;align-items:center;justify-content:flex-start;gap:14px;width:100%;margin:10px 0;text-align:left;font-size:clamp(14px,2vw,18px)}
+.ans b{flex:none;width:36px;height:36px;display:grid;place-items:center;color:#2a1704;background:linear-gradient(#ffe590,#e4ac32);border:2px solid #5a3a0e;border-radius:6px}
+.ans.ok{color:#2a1704;background:linear-gradient(#ffe590,#e4ac32 48%,#a8741a);border-color:#5a3a0e;box-shadow:0 6px 0 #4a2c08,0 0 34px rgba(242,193,78,.8)}
+.ans.bad{background:linear-gradient(#a8402a,#5a1608);border-color:#e0583a}
+#qb{height:100%;width:100%;background:linear-gradient(#ffe590,#e4ac32 50%,#a8741a)}
+#qb.low{background:linear-gradient(#ff9a7a,#d2402a 55%,#7a1608)}
+#qm{min-height:1.6em;margin:12px 0 0;color:var(--gold);font-size:1rem;letter-spacing:.06em}
 #ov{position:fixed;inset:0;display:none;place-items:center;padding:16px;background:rgba(11,7,4,.8);overflow:auto}
 #ov.on{display:grid}
 .panel{position:relative;max-width:640px;width:100%;padding:28px 26px 30px;text-align:center;background:linear-gradient(#1a0f07,#090502);border:6px double var(--gold-lo);border-radius:10px;box-shadow:inset 0 0 60px rgba(0,0,0,.95),0 0 40px rgba(242,193,78,.25)}
@@ -55,8 +68,9 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 <body>
 <canvas id="c"></canvas>
 <div id="ban"></div>
+<div id="ptop"><div id="prog"></div><div id="pct">0%</div></div>
+<div id="qz"></div>
 <div id="bar">
-  <div id="prog"></div>
   <div class="cell" id="fuelw" style="flex:1 1 220px"><span class="lab">ÜZEMANYAG <span id="fuelv" style="color:var(--gold)">100</span></span><div class="meter"><div id="fuelb"></div></div></div>
   <div class="cell"><span class="lab">TEST</span><div id="hull"></div></div>
   <div class="cell"><span class="lab">IDŐ</span><span class="val" id="time">0:00</span></div>
@@ -74,10 +88,23 @@ function rs(){const d=Math.min(devicePixelRatio||1,1.5);W=innerWidth;H=innerHeig
 addEventListener('resize',rs);rs();
 
 /* ===== SZINTEK ===== */
+/* ===== BEÁLLÍTÁSOK (itt módosíthatók) ===== */
+const CFG={
+ SHEET_ID:'1i6r5_9a_myoXp17eLxAGLB-ZzlCAGhpAAZbDG9cUvYg', // a kvíz táblázata
+ SHEET_NAME:'Munkalap1',
+ BASE_SPEED:600,                    // az 1,0-s sebességnek megfelelő érték
+ SPEED:[[.5,1],[1,1.5],[1.5,2]],    // szintenként: kezdő és záró sebesség (szorzó)
+ BIG_EVERY:5,                      // ennyi normál doboz után jön egy nagy zsákmány
+ QUIZ_TIME:20,                      // másodperc a kérdés megválaszolására
+ RESULT_TIME:1.4,                   // ennyi ideig látszik az eredmény a válasz után
+ RAMP_TIME:2,                       // a gyorsulás ideje a kvíz után (mp)
+ SMALL_BASE:1,SMALL_K:.04,          // normál doboz: alap + doboz sebessége * K
+ MAX_FUEL:100
+};
 const LV=[
- {len:36000,burn:2.0,gap:[800,1400],v:[20,70],tw:1,r:1,name:'Bevezető járat'},
- {len:108000,burn:3.2,gap:[1500,2900],v:[50,170],tw:1.12,r:.92,name:'Mély aknák'},
- {len:180000,burn:4.2,gap:[2000,4000],v:[90,300],tw:1.25,r:.84,name:'A Nagy Mélység'}];
+ {len:27000,burn:1.6,big:50,gap:[800,1400],v:[20,70],tw:1,r:1,name:'Bevezető járat'},
+ {len:135000,burn:1.7,big:60,gap:[1500,2900],v:[50,170],tw:.9,r:.92,name:'Mély aknák'},
+ {len:315000,burn:1.7,big:80,gap:[2000,4000],v:[90,300],tw:.75,r:.84,name:'A Nagy Mélység'}];
 let L=LV[0];
 const ramp=z=>cl(z/3000,0,1);
 const PX=z=>ramp(z)*(220*Math.sin(z*.0013*L.tw)+120*Math.sin(z*.0031*L.tw+1.7));
@@ -86,18 +113,18 @@ const RX=z=>(255+35*Math.sin(z*.0023+2))*L.r,RY=z=>(175+25*Math.sin(z*.0029+1))*
 
 /* ===== ÁLLAPOT ===== */
 let st='menu',lv=0,Z=0,X=0,Y=0,VX=0,VY=0,SP=600,bank=0,fuel=100,hull=3,inv=0,tm=0,got=0,tally=0,camX=0,camY=0,camZ=0,shake=0,fl=0,fr=0,dt0=0,boom=false,why='',nz=0,T=0,last=0;
+let sm=0,bc=0,qok=0,qn=0,cq=null,qT=0,qd=false,qr=0,deck=[];
 let boxes=[],pulses=[],bursts=[],sparks=[],floats=[],dust=[];
 let save={unlock:0,best:[null,null,null]};
 try{const s=JSON.parse(localStorage.getItem('aranyalagut'));if(s&&s.best)save=s}catch(e){}
 const store=()=>{try{localStorage.setItem('aranyalagut',JSON.stringify(save))}catch(e){}};
 
 /* ===== BILLENTYŰK ===== */
-const K={l:0,r:0,f:0,b:0,u:0,d:0};
-/*const MAP={KeyA:'l',ArrowLeft:'l',KeyD:'r',ArrowRight:'r',KeyW:'f',ArrowUp:'f',KeyS:'b',ArrowDown:'b',Space:'u',ControlLeft:'d',ControlRight:'d',ShiftLeft:'d',ShiftRight:'d',KeyC:'d'};*/
-const MAP={KeyA:'l',ArrowLeft:'l',KeyD:'r',ArrowRight:'r',KeyW:'f',ArrowUp:'f',KeyS:'b',ArrowDown:'b',ShiftLeft:'u',Space:'u',ControlLeft:'d',KeyC:'d'};
+const K={l:0,r:0,u:0,d:0};
+const MAP={KeyA:'l',ArrowLeft:'l',KeyD:'r',ArrowRight:'r',KeyW:'u',ArrowUp:'u',KeyS:'d',ArrowDown:'d'};
 addEventListener('keydown',e=>{
  if(MAP[e.code]){K[MAP[e.code]]=1;e.preventDefault()}
- if(e.ctrlKey&&['KeyA','KeyS','KeyD'].includes(e.code))e.preventDefault();
+ const m=/^(?:Digit|Numpad)([1-4])$/.exec(e.code);if(m&&st==='quiz'){answer(+m[1]-1);e.preventDefault()}
  if((e.code==='KeyP'||e.code==='Escape')&&!e.repeat){if(st==='play')pause();else if(st==='pause')resume()}
 });
 addEventListener('keyup',e=>{if(MAP[e.code])K[MAP[e.code]]=0});
@@ -106,15 +133,16 @@ addEventListener('blur',()=>{clearK();if(st==='play')pause()});
 
 /* ===== INDÍTÁS ===== */
 function start(n){
- lv=n;L=LV[n];Z=0;X=0;Y=0;VX=VY=0;SP=600;bank=0;fuel=100;hull=3;inv=0;tm=0;got=0;tally=0;shake=fl=fr=0;boom=false;
+ lv=n;L=LV[n];Z=0;sm=0;bc=0;qok=0;qn=0;$('qz').className='';X=0;Y=0;VX=VY=0;SP=600;bank=0;fuel=100;hull=3;inv=0;tm=0;got=0;tally=0;shake=fl=fr=0;boom=false;
  boxes=[];pulses=[];bursts=[];sparks=[];floats=[];nz=2500;camZ=-220;camX=camY=0;
  dust=Array.from({length:70},()=>({z:rnd(0,2400),ox:rnd(-.8,.8),oy:rnd(-.8,.8)}));
  spawn();clearK();ov.className='';st='play';
  const b=$('ban');b.innerHTML=`${n+1}. SZINT<small>${L.name.toUpperCase()}</small>`;b.className='';void b.offsetWidth;b.className='go';
  $('lvl').textContent=n+1;
 }
-function spawn(){while(nz<Z+4200){const z=nz;boxes.push({z,off:0,tx:rnd(-.6,.6)*RX(z),v:rnd(L.v[0],L.v[1]),y:rnd(-.4,.4),ph:rnd(0,6),gone:false});nz+=rnd(L.gap[0],L.gap[1])}}
-const gain=v=>Math.round(8+v*.2);
+function spawn(){while(nz<Z+4200){const z=nz,big=bc>=CFG.BIG_EVERY;bc=big?0:bc+1;boxes.push({z,off:0,tx:rnd(-.6,.6)*RX(z),v:big?L.v[1]*.8:rnd(L.v[0],L.v[1]),y:rnd(-.4,.4),ph:rnd(0,6),gone:false,big});nz+=rnd(L.gap[0],L.gap[1])}}
+const gain=v=>Math.max(1,Math.round(CFG.SMALL_BASE+v*CFG.SMALL_K));
+const fac=()=>{const s=CFG.SPEED[lv];return s[0]+(s[1]-s[0])*cl(Z/L.len,0,1)};
 
 /* ===== KEZELŐFELÜLET ===== */
 const ov=$('ov');
@@ -127,16 +155,16 @@ function menu(){
  st='menu';L=LV[0];Z=0;boxes=[];clearK();$('ban').className='';
  const lb=i=>`${i+1}. szint<small>${save.best[i]!=null?'Legjobb: '+fmt(save.best[i]):i>save.unlock?'Zárolva':LV[i].name}</small>`;
  panel('ARANYALAGÚT','Vezesd át az űrhajót a sötét barlangon',
- `<p>Gyűjtsd a fénylő üzemanyagdobozokat, mielőtt kifogy a tank. Minél gyorsabban mozog egy doboz, annál több üzemanyagot ad. A falnak ütközés sérülést okoz.</p>
- <div class="keys"><b>W / ↑</b><span>gyorsítás</span><b>S / ↓</b><span>fékezés</span><b>A / ←   D / →</b><span>balra, jobbra</span><b>Bal Shift</b><span>emelkedés</span>
-<b>Bal Ctrl</b><span>süllyedés</span><b>P</b><span>szünet</span></div>
- <p style="font-size:.8rem">A Ctrl + W a böngészőben bezárja a fület, ezért süllyedéshez használhatod a Shift vagy a C billentyűt is.</p>`,
+ `<p>Gyűjtsd a fénylő üzemanyagdobozokat, mielőtt kifogy a tank. A normál dobozok kevés üzemanyagot adnak, a gyorsabbak valamivel többet. Minden ${CFG.BIG_EVERY}. doboz után nagy zsákmány jön: ha eltalálod, egy kérdésre kell válaszolnod, és jó válaszért sok üzemanyagot kapsz. A falnak ütközés sérülést okoz.</p>
+ <div class="keys"><b>A / ←   D / →</b><span>balra, jobbra</span><b>W / ↑</b><span>emelkedés</span><b>S / ↓</b><span>süllyedés</span><b>1 2 3 4</b><span>válasz a kvízkérdésre</span><b>P</b><span>szünet</span></div>
+ <p style="font-size:.8rem" id="qs">Kérdések betöltése…</p>`,
  [0,1,2].map(i=>['lv'+i,lb(i),i>0,i>save.unlock]));
+ qstat();
 }
 function pause(){if(st!=='play')return;st='pause';clearK();panel('SZÜNET','Az űrhajó áll',``,[['resume','Folytatás'],['menu','Főmenü',1]])}
 function resume(){ov.className='';st='play';last=performance.now()}
 function end(win){
- const stats=`<p>Idő: ${fmt(tm)} &nbsp;·&nbsp; Összegyűjtött dobozok: ${got} &nbsp;·&nbsp; Szerzett üzemanyag: ${tally}</p>`;
+ const stats=`<p>Idő: ${fmt(tm)} &nbsp;·&nbsp; Összegyűjtött dobozok: ${got} &nbsp;·&nbsp; Helyes válaszok: ${qok}/${qn}</p>`;
  if(win){
   if(save.best[lv]==null||tm<save.best[lv])save.best[lv]=Math.round(tm);
   save.unlock=Math.max(save.unlock,Math.min(2,lv+1));store();
@@ -157,19 +185,20 @@ function addSpark(sx,sy,sp,col){const a=rnd(0,6.283),v=rnd(80,420)*sp;sparks.pus
 function update(dt){
  T+=dt;
  if(st==='menu'){Z+=320*dt;X=PX(Z);Y=PY(Z);SP=600;VX=0;VY=0;bank=0;return move(dt,true)}
- if(st==='play'||st==='dead'){
+ if(st==='play'||st==='dead'||st==='quiz'){
   const alive=st==='play';
   if(alive){
-   const ax=K.r-K.l,ay=K.u-K.d,as=K.f-K.b;
-   VX+=(ax*700-VX)*Math.min(1,dt*5);VY+=(ay*480-VY)*Math.min(1,dt*5);
-   SP=cl(SP+as*(as>0?420:800)*dt,200,1200);
-   fuel-=L.burn*(.5+.5*SP/600)*dt;tm+=dt;
+   const ax=K.r-K.l,ay=K.u-K.d,f=fac();
+   VX+=(ax*800-VX)*Math.min(1,dt*5);VY+=(ay*480-VY)*Math.min(1,dt*5);
+   sm=Math.min(1,sm+dt/CFG.RAMP_TIME);SP=CFG.BASE_SPEED*f*sm;
+   fuel-=L.burn*(.5+.5*f)*dt;tm+=dt;
+  }else if(st==='quiz'){sm=Math.max(0,sm-dt*3);SP=CFG.BASE_SPEED*fac()*sm;VX*=Math.pow(.01,dt);VY*=Math.pow(.01,dt)
   }else{SP*=Math.pow(.2,dt);VX*=.97;VY*=.97}
   const pz=Z;Z+=SP*dt;X+=VX*dt;Y+=VY*dt;bank+=(VX/700-bank)*Math.min(1,dt*8);inv=Math.max(0,inv-dt);
   if(alive){
    const dx=(X-PX(Z))/(RX(Z)*.85-26),dy=(Y-PY(Z))/(RY(Z)*.85-26),dd=dx*dx+dy*dy;
    if(dd>1){
-    if(inv<=0){hull--;inv=1.2;SP=Math.max(200,SP*.45);shake=1;fr=1;VX=-VX*.4;VY=-VY*.4;
+    if(inv<=0){hull--;inv=1.2;sm=Math.min(sm,.5);shake=1;fr=1;VX=-VX*.4;VY=-VY*.4;
      const p=pr(X,Y,Z);for(let i=0;i<25;i++)addSpark(p[0],p[1],1,'255,120,60');
      if(hull<=0)die('Az űrhajó megsemmisült',true)}
     const q=.92/Math.sqrt(dd);X=PX(Z)+(X-PX(Z))*q;Y=PY(Z)+(Y-PY(Z))*q;
@@ -177,7 +206,7 @@ function update(dt){
    for(const b of boxes){
     if(b.gone||b.z<pz-14||b.z>Z+14)continue;
     const bx=PX(b.z)+b.off,by=PY(b.z)+b.y*RY(b.z);
-    if((X-bx)**2+(Y-by)**2<75*75)collect(b,bx,by);
+    if((X-bx)**2+(Y-by)**2<(b.big?115:75)**2)collect(b,bx,by);
    }
    if(fuel<=0){fuel=0;die('Elfogyott az üzemanyag',false)}
    if(Z>=L.len+300)win();
@@ -188,6 +217,7 @@ function update(dt){
    if(Math.abs(d)<=m){b.off=b.tx;b.tx=rnd(-.62,.62)*RX(b.z)}else b.off+=Math.sign(d)*m;
   }
   boxes=boxes.filter(b=>b.z>Z-500);
+  if(st==='quiz')quizTick(dt);
   if(st==='dead'){dt0+=dt;if(dt0>1.4){st='over';end(false)}}
  }
  move(dt)
@@ -205,18 +235,61 @@ function move(dt,att){
  hud()
 }
 function collect(b,bx,by){
- b.gone=true;const a=gain(b.v);fuel=Math.min(100,fuel+a);got++;tally+=a;
- const p=pr(bx,by,b.z);fl=.7;
+ b.gone=true;got++;const p=pr(bx,by,b.z);fl=.7;
  pulses.push({z:b.z,t:.9});bursts.push({x:p[0],y:p[1],t:.55,r:p[2]*40});
  for(let i=0;i<34;i++)addSpark(p[0],p[1],1,'255,225,140');
- floats.push({x:W/2,y:CY+90,t:1.3,txt:'+'+a});
- const f=$('fuelw');f.classList.add('fed');setTimeout(()=>f.classList.remove('fed'),220);
+ if(b.big){openQ();return}
+ const a=gain(b.v);fuel=Math.min(CFG.MAX_FUEL,fuel+a);tally+=a;floats.push({x:W/2,y:CY+90,t:1.3,txt:'+'+a});fed();
 }
+function fed(){const f=$('fuelw');f.classList.add('fed');setTimeout(()=>f.classList.remove('fed'),220)}
+
+/* ===== KVÍZ ===== */
+const SAMPLE=[['Melyik bolygó a Naprendszerünk legnagyobb bolygója?','Föld','Mars','Jupiter','Szaturnusz',3],['Mi Magyarország fővárosa?','Bécs','Budapest','Pozsony','Prága',2],['Hány kontinens van a Földön?','5','6','7','8',3],['Mi a víz vegyjele?','CO2','O2','H2O','NaCl',3],['Melyik folyó folyik át Budapesten?','Tisza','Dráva','Duna','Körös',3],['Hány lába van egy póknak?','4','6','8','10',3],['Melyik a legnagyobb óceán?','Atlanti-óceán','Indiai-óceán','Csendes-óceán','Jeges-tenger',3],['Ki festette a Mona Lisát?','Michelangelo','Leonardo da Vinci','Van Gogh','Picasso',2]];
+let QS=[],qsrc='load';
+function loadQ(){
+ const cb='__gvq',el=document.createElement('script');
+ const done=()=>{delete window[cb];el.remove()};
+ const fail=()=>{done();qsrc='sample';qstat()};
+ window[cb]=r=>{
+  done();
+  try{
+   if(r.status!=='ok')throw 0;
+   QS=r.table.rows.map(x=>x.c.map(c=>c&&c.v!=null?String(c.v).trim():'')).map(x=>[x[0],x[1],x[2],x[3],x[4],parseInt(x[5])]).filter(x=>x[0]&&x[5]>=1&&x[5]<=4&&x.slice(1,5).every(a=>a));
+   if(!QS.length)throw 0;qsrc='sheet';qstat();
+  }catch(e){QS=[];fail()}
+ };
+ el.onerror=fail;
+ el.src=`https://docs.google.com/spreadsheets/d/${CFG.SHEET_ID}/gviz/tq?tqx=responseHandler:${cb}&sheet=${encodeURIComponent(CFG.SHEET_NAME)}&headers=1`;
+ document.head.appendChild(el);
+}
+function qstat(){const e=$('qs');if(e)e.textContent=qsrc==='sheet'?`Kérdések betöltve a táblázatból: ${QS.length} db`:qsrc==='sample'?'A táblázat nem érhető el, a beépített mintakérdések használatban.':'Kérdések betöltése…'}
+function pickQ(){const src=QS.length?QS:SAMPLE;if(!deck.length||deck.some(i=>i>=src.length))deck=src.map((_,i)=>i).sort(()=>Math.random()-.5);return src[deck.pop()]}
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function openQ(){
+ cq=pickQ();qT=CFG.QUIZ_TIME;qd=false;qr=0;clearK();st='quiz';
+ $('qz').innerHTML=`<div class="panel"><h2>NAGY ZSÁKMÁNY</h2><p class="q">${esc(cq[0])}</p>${[1,2,3,4].map(i=>`<button class="btn alt ans" data-i="${i-1}"><b>${i}</b><span>${esc(cq[i])}</span></button>`).join('')}<div class="meter" style="margin-top:16px"><div id="qb"></div></div><div id="qm">15</div></div>`;
+ $('qz').className='on';quizTick(0);
+}
+function answer(i){
+ if(st!=='quiz'||qd)return;qd=true;qr=CFG.RESULT_TIME;qn++;
+ const ok=i===cq[5]-1,bs=document.querySelectorAll('#qz .ans');bs.forEach(b=>b.disabled=true);
+ bs[cq[5]-1].classList.add('ok');if(i>=0&&!ok)bs[i].classList.add('bad');
+ if(ok){qok++;const a=L.big;fuel=Math.min(CFG.MAX_FUEL,fuel+a);tally+=a;fl=1;fed();floats.push({x:W/2,y:CY+90,t:1.6,txt:'+'+a});
+  pulses.push({z:Z+300,t:.9});for(let k=0;k<50;k++)addSpark(W/2,CY+60,1.3,'255,225,140')}
+ $('qm').textContent=ok?`Helyes! +${L.big} üzemanyag`:i<0?'Lejárt az idő, nincs üzemanyag':'Rossz válasz, nincs üzemanyag';
+}
+function quizTick(dt){
+ if(qd){qr-=dt;if(qr<=0){$('qz').className='';st='play';clearK();last=performance.now()}return}
+ qT-=dt;const q=$('qb');if(q){q.style.width=cl(qT/CFG.QUIZ_TIME,0,1)*100+'%';q.classList.toggle('low',qT<5)}
+ $('qm').textContent=Math.max(0,Math.ceil(qT))+' mp';
+ if(qT<=0)answer(-1);
+}
+$('qz').addEventListener('click',e=>{const b=e.target.closest('.ans');if(b)answer(+b.dataset.i)});
 function hud(){
  const pc=cl(fuel,0,100);
  $('fuelb').style.width=pc+'%';$('fuelv').textContent=Math.round(pc);$('fuelw').classList.toggle('low',pc<25);
- $('time').textContent=fmt(tm);$('spd').textContent=Math.round(SP/10);
- $('prog').style.width=(st==='menu'?0:cl(Z/L.len,0,1)*100)+'%';
+ $('time').textContent=fmt(tm);$('spd').textContent=(SP/CFG.BASE_SPEED).toFixed(2)+'×';
+ const pp=st==='menu'?0:cl(Z/L.len,0,1)*100;$('prog').style.width=pp+'%';$('pct').textContent=Math.floor(pp)+'%';
  $('hull').innerHTML=[0,1,2].map(i=>`<span class="pip${i<hull?'':' off'}"></span>`).join('');
 }
 
@@ -230,7 +303,7 @@ function draw(){
  if(shake>0)g.translate(rnd(-1,1)*shake*14,rnd(-1,1)*shake*14);
  const k0=Math.ceil((camZ+45)/SEG);
  const lights=[];
- for(const b of boxes)if(!b.gone&&b.z>camZ-300&&b.z<camZ+3200)lights.push([b.z,.9]);
+ for(const b of boxes)if(!b.gone&&b.z>camZ-300&&b.z<camZ+3200)lights.push([b.z,b.big?1.7:.9]);
  for(const p of pulses)lights.push([p.z,p.t*2.6]);
  for(let i=0;i<=NR;i++){
   const k=k0+i,z=k*SEG,d=z-camZ,s=F/d,cx=PX(z),cy=PY(z),rx=RX(z),ry=RY(z);
@@ -265,11 +338,14 @@ function draw(){
  g.globalCompositeOperation='lighter';
  for(let i=boxes.length-1;i>=0;i--){
   const b=boxes[i];if(b.gone)continue;const d=b.z-camZ;if(d<45||d>3200)continue;
-  const p=pr(PX(b.z)+b.off,PY(b.z)+b.y*RY(b.z),b.z),sz=Math.max(2,36*p[2]),hot=cl((b.v-L.v[0])/(L.v[1]-L.v[0]),0,1);
+  const p=pr(PX(b.z)+b.off,PY(b.z)+b.y*RY(b.z),b.z),sz=Math.max(2,(b.big?62:36)*p[2]),hot=b.big?1:cl((b.v-L.v[0])/(L.v[1]-L.v[0]),0,1);
   const pu=.75+.25*Math.sin(T*(4+b.v/25)+b.ph),col=`255,${200+hot*45|0},${90+hot*130|0}`;
   let gr=g.createRadialGradient(p[0],p[1],0,p[0],p[1],sz*9);gr.addColorStop(0,`rgba(${col},${.55*pu})`);gr.addColorStop(1,`rgba(${col},0)`);
   g.fillStyle=gr;g.fillRect(p[0]-sz*9,p[1]-sz*9,sz*18,sz*18);
-  g.fillStyle=`rgba(${col},${.9*pu})`;g.fillRect(p[0]-sz,p[1]-sz,sz*2,sz*2);
+  if(b.big){g.save();g.translate(p[0],p[1]);g.rotate(T*.8);g.strokeStyle=`rgba(${col},${.7*pu})`;g.lineWidth=Math.max(1,sz*.12);
+   for(let k=0;k<8;k++){g.rotate(Math.PI/4);g.beginPath();g.moveTo(sz*1.5,0);g.lineTo(sz*3.6,0);g.stroke()}
+   g.rotate(Math.PI/4);g.strokeRect(-sz,-sz,sz*2,sz*2);g.fillStyle=`rgba(${col},${.9*pu})`;g.fillRect(-sz*.8,-sz*.8,sz*1.6,sz*1.6);g.restore()}
+  else{g.fillStyle=`rgba(${col},${.9*pu})`;g.fillRect(p[0]-sz,p[1]-sz,sz*2,sz*2)}
   g.fillStyle='rgba(255,255,255,.95)';g.fillRect(p[0]-sz*.5,p[1]-sz*.5,sz,sz);
  }
  g.globalCompositeOperation='source-over';
@@ -317,7 +393,7 @@ function loop(t){
  draw();
 }
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&st==='play')pause()});
-hud();menu();requestAnimationFrame(loop);
+hud();loadQ();menu();requestAnimationFrame(loop);
 </script>
 </body>
 </html>
