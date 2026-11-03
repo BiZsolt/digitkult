@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Álhír-kvíz · 7–8. osztály</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg0:#0b0704;--bg1:#2b1a0d;--brown:#5a3a1a;--brown-dk:#3a2410;--gold:#f2c14e;--gold-hi:#ffe9a3;--gold-lo:#9b6a16;--text-dim:#d9b46a;--font:"Cinzel",Georgia,"Times New Roman",serif}
+*{box-sizing:border-box}
+html,body{margin:0}
+html{background:var(--bg0)}
+body{min-height:100vh;font-family:var(--font);font-weight:700;color:var(--gold-hi);
+ background:repeating-linear-gradient(45deg,rgba(255,200,90,.025) 0 2px,transparent 2px 8px),radial-gradient(ellipse at 50% 35%,var(--bg1) 0%,var(--bg0) 72%);background-attachment:fixed;overflow-x:hidden}
+#ptop{position:sticky;top:0;z-index:5;height:30px;background:linear-gradient(#1a0f07,#090502);border-bottom:4px double var(--gold-lo);box-shadow:0 10px 30px rgba(0,0,0,.8);overflow:hidden}
+#prog{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(#ffe590,#e4ac32 50%,#a8741a);box-shadow:0 0 14px rgba(242,193,78,.6);transition:width .25s}
+#pct{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:900;letter-spacing:.14em;color:var(--gold-hi);mix-blend-mode:difference}
+main{max-width:860px;margin:0 auto;padding:clamp(22px,4vh,44px) 18px 80px;text-align:center}
+.school{margin:0 0 10px;font-size:clamp(10px,1.3vw,14px);letter-spacing:.1em;color:var(--text-dim)}
+h1{margin:0;font-weight:900;letter-spacing:.12em;font-size:clamp(30px,7vw,60px);color:var(--gold);text-shadow:0 3px 0 var(--brown),0 0 22px rgba(242,193,78,.4)}
+.grade{margin:10px 0 28px;font-size:clamp(14px,2vw,20px);letter-spacing:.18em;color:var(--text-dim)}
+.card{position:relative;padding:22px 24px;text-align:left;overflow:hidden;background:linear-gradient(#1a0f07,#090502);border:6px double var(--gold-lo);border-radius:10px;box-shadow:inset 0 0 60px rgba(0,0,0,.95),0 0 22px rgba(242,193,78,.12)}
+.card::before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(rgba(255,255,255,.035) 0 1px,transparent 1px 4px)}
+.tips{margin-bottom:32px}
+.tips h2{margin:0 0 14px;font-size:clamp(17px,2.6vw,24px);font-weight:900;letter-spacing:.05em;color:var(--gold);text-shadow:0 3px 0 var(--brown-dk)}
+.tips ol{margin:0;padding-left:1.4em;color:var(--text-dim);font-size:clamp(14px,1.9vw,17px);line-height:1.8;letter-spacing:.02em}
+.tips li::marker{color:var(--gold);font-weight:900}
+#quiz{display:flex;flex-direction:column;gap:22px}
+.item{display:flex;flex-direction:column;gap:14px}
+.item .top{display:flex;gap:16px;align-items:flex-start}
+.n{flex:none;width:44px;height:44px;display:grid;place-items:center;font-size:1.15rem;font-weight:900;color:var(--gold);background:var(--bg0);border:3px double var(--gold-lo);border-radius:8px;box-shadow:inset 0 0 14px rgba(0,0,0,.9)}
+.item p{margin:0;flex:1;font-size:clamp(15px,2.1vw,19px);line-height:1.55;letter-spacing:.02em;color:var(--gold-hi)}
+.opts{display:flex;flex-wrap:wrap;gap:12px}
+.opt{flex:1 1 160px;min-height:50px;padding:6px 16px;font:900 1rem var(--font);letter-spacing:.06em;color:var(--gold-hi);cursor:pointer;background:linear-gradient(var(--brown),var(--brown-dk));border:3px solid var(--gold-lo);border-radius:12px;box-shadow:0 6px 0 #1a0f07,inset 0 2px 0 rgba(255,233,163,.18);transition:transform .08s,box-shadow .08s,filter .2s}
+.opt:hover:not(:disabled){filter:brightness(1.2);border-color:var(--gold)}
+.opt[aria-pressed=true]{color:#2a1704;text-shadow:0 1px 0 #ffeeb8;background:linear-gradient(#ffe590,#e4ac32 48%,#a8741a);border-color:#5a3a0e;box-shadow:0 6px 0 #4a2c08,0 0 28px rgba(242,193,78,.5),inset 0 3px 0 rgba(255,255,255,.55);transform:translateY(0)}
+.opt:disabled{cursor:default}
+.fb{min-height:0;font-size:.95rem;letter-spacing:.06em}
+.item.ok{border-color:var(--gold);box-shadow:inset 0 0 60px rgba(0,0,0,.95),0 0 30px rgba(242,193,78,.4)}
+.item.ok .fb{color:var(--gold)}
+.item.bad{border-color:#b9482e;box-shadow:inset 0 0 60px rgba(0,0,0,.95),0 0 24px rgba(200,60,30,.3)}
+.item.bad .fb{color:#ff9a7a}
+.btns{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin:34px 0 10px}
+.btn{min-width:200px;min-height:58px;padding:6px 26px;font:900 1.1rem var(--font);letter-spacing:.08em;color:#2a1704;text-shadow:0 1px 0 #ffeeb8;cursor:pointer;background:linear-gradient(#ffe590,#e4ac32 48%,#a8741a);border:3px solid #5a3a0e;border-radius:12px;box-shadow:0 6px 0 #4a2c08,0 0 30px rgba(242,193,78,.45),inset 0 3px 0 rgba(255,255,255,.55);transition:transform .08s,box-shadow .08s,filter .2s}
+.btn:hover{filter:brightness(1.1)}
+.btn:active{transform:translateY(5px);box-shadow:0 1px 0 #4a2c08}
+.btn.alt{color:var(--gold-hi);text-shadow:none;background:linear-gradient(var(--brown),var(--brown-dk));border-color:var(--gold-lo);box-shadow:0 6px 0 #1a0f07,inset 0 2px 0 rgba(255,233,163,.18)}
+#result .card{text-align:center;border-color:var(--gold);box-shadow:inset 0 0 60px rgba(0,0,0,.95),0 0 40px rgba(242,193,78,.4)}
+.lab{font-size:clamp(12px,1.6vw,15px);letter-spacing:.2em;color:var(--text-dim)}
+.big{margin:6px 0;font-size:clamp(44px,10vw,84px);font-weight:900;color:var(--gold);text-shadow:0 4px 0 var(--brown),0 0 30px rgba(242,193,78,.5);letter-spacing:.06em}
+.verdict{margin:0;color:var(--text-dim);font-size:clamp(14px,2vw,18px);line-height:1.6}
+.msg{padding:22px;color:var(--text-dim);text-align:center;background:linear-gradient(#1a0f07,#090502);border:5px double var(--brown);border-radius:10px}
+#ov{position:fixed;inset:0;display:none;place-items:center;padding:16px;background:rgba(11,7,4,.8);z-index:9}
+#ov.on{display:grid}
+.panel{max-width:460px;width:100%;padding:28px 26px 30px;text-align:center;background:linear-gradient(#1a0f07,#090502);border:6px double var(--gold-lo);border-radius:10px;box-shadow:inset 0 0 60px rgba(0,0,0,.95),0 0 40px rgba(242,193,78,.25)}
+.panel h2{margin:0 0 14px;font-size:clamp(20px,3.6vw,28px);font-weight:900;letter-spacing:.08em;color:var(--gold)}
+.panel p{margin:0 0 22px;color:var(--text-dim);line-height:1.6}
+.panel .btns{margin:0}.panel .btn{min-width:0;flex:1 1 150px;font-size:.95rem}
+:focus-visible{outline:4px solid #fff;outline-offset:4px}
+@media (max-width:520px){.card{padding:18px 14px}.item .top{gap:10px}.n{width:36px;height:36px}}
+</style>
+</head>
+<body>
+<div id="ptop"><div id="prog"></div><div id="pct">0 / 40</div></div>
+<main>
+ <p class="school">Szombathelyi Reguly Antal Nyelvoktató Nemzetiségi Általános Iskola</p>
+ <h1>Álhír-kvíz</h1>
+ <p class="grade">7–8. OSZTÁLY</p>
+
+ <section class="card tips">
+  <h2>Hogyan ismerd fel az álhírt (Fake News-t)?</h2>
+  <ol>
+   <li>Nincs megjelölt forrás vagy szerző.</li>
+   <li>Erős érzelmekre hat (düh, félelem, túlzott szenzáció).</li>
+   <li>Konkrét adatok, helyszínek hiánya.</li>
+   <li>Túl szép vagy szörnyű, hogy igaz legyen.</li>
+  </ol>
+ </section>
+
+ <div id="quiz"><div class="msg">Hírek betöltése…</div></div>
+ <div class="btns" id="btns" hidden>
+  <button class="btn" id="score">Pontszám</button>
+  <button class="btn alt" id="again" hidden>Új kvíz</button>
+ </div>
+ <div id="result" aria-live="polite"></div>
+</main>
+<div id="ov"></div>
+
+<script>
+/* ===== BEÁLLÍTÁS ===== */
+const CFG={
+ SHEET_ID:"1R3bTXyd1yaaSDnso-SD3tCPvOZlRVGrH-neADDDZBAA", // a táblázat azonosítója
+ SHEET_NAME:"Munkalap1",  // a lap neve
+ AGE:"7-8",           // melyik korosztály sorai kerüljenek be (A oszlop eleje)
+ COUNT:40          // hány hír legyen a kvízben (fele álhír, fele igazi)
+};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[–—]/g,"-").toLowerCase().trim();
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+
+let pool=[],set=[],ans=[],locked=false;
+
+/* ===== ADATOK (Google Táblázat, A: korosztály, D: hír, E: helyes válasz) ===== */
+let jid=0;
+function getSheet(){
+ return new Promise((resolve,reject)=>{
+  const cb="__gv"+(jid++),el=document.createElement("script");
+  const done=()=>{delete window[cb];el.remove()};
+  window[cb]=r=>{
+   done();
+   if(r.status!=="ok")return reject(new Error((r.errors&&r.errors[0]&&(r.errors[0].detailed_message||r.errors[0].message))||"ismeretlen táblázathiba"));
+   resolve(r.table.rows.map(x=>x.c.map(c=>(c&&c.v!=null)?String(c.v):"")));
+  };
+  el.onload=()=>{if(window[cb]){done();reject(new Error("a „"+CFG.SHEET_NAME+"” lap nem érhető el, vagy a táblázat nincs megosztva („Bárki, akinek megvan a link”)"))}};
+  el.onerror=()=>{done();reject(new Error("a táblázat nem tölthető be (hálózati hiba vagy rossz azonosító)"))};
+  el.src=`https://docs.google.com/spreadsheets/d/${CFG.SHEET_ID}/gviz/tq?tqx=responseHandler:${cb}&sheet=${encodeURIComponent(CFG.SHEET_NAME)}&headers=1`;
+  document.head.appendChild(el);
+ });
+}
+function toPool(rows){
+ return rows.filter(r=>norm(r[0]).startsWith(CFG.AGE)&&r[3].trim()).map(r=>{
+  const e=norm(r[4]);
+  return{t:r[3].trim(),fake:e.includes("alhir")?true:e.includes("igazi")?false:null};
+ }).filter(x=>x.fake!==null);
+}
+
+/* ===== KVÍZ ÖSSZEÁLLÍTÁSA ===== */
+function pick(){
+ const f=shuffle(pool.filter(x=>x.fake)),r=shuffle(pool.filter(x=>!x.fake));
+ let nf=Math.floor(CFG.COUNT/2),nr=CFG.COUNT-nf;
+ if(f.length<nf){nr+=nf-f.length;nf=f.length}
+ if(r.length<nr){nf+=nr-r.length;nr=r.length}
+ return shuffle([...f.slice(0,nf),...r.slice(0,nr)]);
+}
+function render(){
+ set=pick();ans=set.map(()=>null);locked=false;
+ $("quiz").innerHTML=set.map((it,i)=>`
+  <article class="card item" id="q${i}">
+   <div class="top"><span class="n">${i+1}</span><p>${esc(it.t)}</p></div>
+   <div class="opts" role="group" aria-label="${i+1}. hír">
+    <button class="opt" data-i="${i}" data-v="real" aria-pressed="false">Igazi hír</button>
+    <button class="opt" data-i="${i}" data-v="fake" aria-pressed="false">Álhír</button>
+   </div>
+   <div class="fb"></div>
+  </article>`).join("");
+ $("result").innerHTML="";$("score").hidden=false;$("again").hidden=true;$("btns").hidden=false;
+ progress();window.scrollTo({top:0});
+}
+function progress(){
+ const n=ans.filter(Boolean).length;
+ $("prog").style.width=(set.length?n/set.length*100:0)+"%";
+ $("pct").textContent=n+" / "+set.length;
+}
+
+/* ===== VÁLASZOK ===== */
+$("quiz").addEventListener("click",e=>{
+ const b=e.target.closest(".opt");if(!b||locked)return;
+ const i=+b.dataset.i;ans[i]=b.dataset.v;
+ document.querySelectorAll(`#q${i} .opt`).forEach(x=>x.setAttribute("aria-pressed",x===b));
+ progress();
+});
+
+function dlg(title,text,btns){
+ $("ov").innerHTML=`<div class="panel"><h2>${title}</h2><p>${text}</p><div class="btns">${btns.map((b,i)=>`<button class="btn${b[2]?" alt":""}" data-i="${i}">${b[0]}</button>`).join("")}</div></div>`;
+ $("ov").className="on";
+ $("ov").querySelectorAll("button").forEach(b=>b.onclick=()=>{$("ov").className="";btns[+b.dataset.i][1]()});
+ $("ov").querySelector("button").focus();
+}
+
+function evaluate(){
+ locked=true;let ok=0;
+ set.forEach((it,i)=>{
+  const right=it.fake?"fake":"real",good=ans[i]===right,el=$("q"+i);
+  if(good)ok++;
+  el.classList.add(good?"ok":"bad");
+  el.querySelectorAll(".opt").forEach(x=>x.disabled=true);
+  el.querySelector(".fb").textContent=good?"✓ Helyes válasz!":(ans[i]?"✗ Nem talált. ":"✗ Nem válaszoltál. ")+"Ez "+(it.fake?"álhír":"igazi hír")+" volt.";
+ });
+ const pc=Math.round(ok/set.length*100);
+ const v=pc>=90?"Kiváló! Igazi álhír-vadász vagy!":pc>=70?"Jó munka! Már jól kiszúrod az álhíreket.":pc>=50?"Nem rossz, de még gyakorolj! Olvasd át újra a tippeket.":"Még sokat kell gyakorolnod. Nézd át a tippeket, és próbáld újra!";
+ $("result").innerHTML=`<div class="card"><div class="lab">PONTSZÁM</div><div class="big">${ok} / ${set.length}</div><p class="verdict">${pc}% · ${v}</p></div>`;
+ $("score").hidden=true;$("again").hidden=false;
+ $("result").scrollIntoView({behavior:"smooth",block:"center"});
+}
+$("score").onclick=()=>{
+ const miss=ans.filter(a=>!a).length;
+ if(miss)dlg("MÉG NEM VÁLASZOLTÁL MINDENRE",`${miss} hírnél nincs válasz. A hiányzó válaszok hibásnak számítanak.`,[["Visszamegyek",()=>{const i=ans.findIndex(a=>!a);$("q"+i).scrollIntoView({behavior:"smooth",block:"center"})}],["Értékelés így is",evaluate,1]]);
+ else evaluate();
+};
+$("again").onclick=render;
+
+/* ===== INDÍTÁS ===== */
+function start(){
+ $("quiz").innerHTML='<div class="msg">Hírek betöltése…</div>';$("btns").hidden=true;
+ getSheet().then(rows=>{
+  pool=toPool(rows);
+  if(!pool.length)throw new Error("nincs megfelelő hír a táblázatban ("+CFG.AGE+")");
+  render();
+ }).catch(err=>{
+  console.error(err);
+  $("quiz").innerHTML=`<div class="msg">Nem sikerült betölteni a híreket: ${esc(err.message)}<br><br><button class="btn" id="retry">Újra próbálom</button></div>`;
+  $("retry").onclick=start;
+ });
+}
+start();
+</script>
+</body>
+</html>
