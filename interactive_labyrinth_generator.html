@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Labyrinth Architect — Interactive Maze Generator</title>
+    <!-- Tailwind CSS for clean, responsive UI styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#151e32',
+                            950: '#0a0f1d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Range Slider Styling for Sleek Dark Mode */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: #1e293b;
+            height: 0.5rem;
+            border-radius: 9999px;
+            border: 1px solid #334155;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            margin-top: -5px;
+            background-color: #38bdf8;
+            height: 1.15rem;
+            width: 1.15rem;
+            border-radius: 9999px;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+            transition: transform 0.15s ease, background-color 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            background-color: #7dd3fc;
+        }
+        input[type="range"]::-moz-range-track {
+            background: #1e293b;
+            height: 0.5rem;
+            border-radius: 9999px;
+            border: 1px solid #334155;
+        }
+        input[type="range"]::-moz-range-thumb {
+            background-color: #38bdf8;
+            height: 1.15rem;
+            width: 1.15rem;
+            border: none;
+            border-radius: 9999px;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+        }
+
+        /* Prevent pull-to-refresh or scroll bounce when swiping/dragging on canvas */
+        #mazeCanvas {
+            touch-action: none;
+            user-select: none;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.65; }
+        }
+        .animate-pulse-glow {
+            animation: pulseGlow 2.5s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-sky-500 selection:text-white">
+
+    <!-- Header Section -->
+    <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-400 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
+                    <!-- Inline SVG Labyrinth Icon -->
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h18v18H3V3zm4 4h10v6H7v4h10" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white">Labyrinth Architect</h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">Procedural Maze Generator &amp; Interactive Pathfinder</p>
+                </div>
+            </div>
+
+            <!-- Live Status & Win Badge -->
+            <div class="flex items-center gap-3">
+                <div id="statusBadge" class="px-3 py-1.5 rounded-full text-xs font-medium bg-slate-800/90 border border-slate-700 text-slate-300 flex items-center gap-2 transition-all">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="statusText">Navigate to the Goal</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Layout -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- Left Sidebar: Controls & Analytics (4 Columns on Desktop) -->
+        <aside class="lg:col-span-4 space-y-5 order-2 lg:order-1">
+            
+            <!-- Complexity & Generation Card -->
+            <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-5">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Labyrinth Parameters</h2>
+                    <span id="difficultyLabel" class="text-xs font-mono font-semibold px-2.5 py-0.5 rounded-md bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                        Balanced (Lvl 5)
+                    </span>
+                </div>
+
+                <!-- Complexity Slider -->
+                <div class="space-y-2.5">
+                    <div class="flex justify-between items-baseline">
+                        <label for="complexitySlider" class="text-sm font-medium text-slate-200">
+                            Complexity Level
+                        </label>
+                        <span id="gridSizeDisplay" class="text-xs font-mono text-slate-400">
+                            19 × 19 Grid
+                        </span>
+                    </div>
+                    <input 
+                        type="range" 
+                        id="complexitySlider" 
+                        min="1" 
+                        max="10" 
+                        value="5" 
+                        step="1"
+                        class="w-full"
+                        aria-label="Labyrinth Complexity Level"
+                    >
+                    <div class="flex justify-between text-[11px] text-slate-500 font-mono">
+                        <span>1 (Simple)</span>
+                        <span>5 (Medium)</span>
+                        <span>10 (Extreme)</span>
+                    </div>
+                    <p class="text-xs text-slate-400 leading-relaxed pt-1">
+                        Increases grid dimensions, interior wall count, and path winding factor (turns between start and goal).
+                    </p>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 pt-1">
+                    <button 
+                        id="generateBtn" 
+                        class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 active:scale-[0.99] text-white font-semibold text-sm shadow-lg shadow-sky-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Generate New Labyrinth
+                    </button>
+
+                    <button 
+                        id="toggleSolutionBtn" 
+                        aria-pressed="false"
+                        class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-slate-600 active:scale-[0.99] text-slate-200 font-medium text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                        <svg id="eyeIcon" class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <span id="solutionBtnText">Show Shortest Solution</span>
+                    </button>
+
+                    <button 
+                        id="resetPlayerBtn" 
+                        class="w-full py-2 px-4 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-200 font-medium text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer sm:col-span-2 lg:col-span-1"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                        </svg>
+                        Reset Player to Start
+                    </button>
+                </div>
+            </section>
+
+            <!-- Structural Metrics Card -->
+            <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+                <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Labyrinth Metrics</h2>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <!-- Optimal Path Length -->
+                    <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3">
+                        <div class="text-xs text-slate-400 mb-1">Shortest Path</div>
+                        <div class="flex items-baseline gap-1.5">
+                            <span id="metricPathLength" class="text-xl font-bold font-mono text-amber-400">--</span>
+                            <span class="text-xs text-slate-500">steps</span>
+                        </div>
+                    </div>
+
+                    <!-- Optimal Turn Count -->
+                    <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3">
+                        <div class="text-xs text-slate-400 mb-1">Solution Turns</div>
+                        <div class="flex items-baseline gap-1.5">
+                            <span id="metricTurnCount" class="text-xl font-bold font-mono text-sky-400">--</span>
+                            <span class="text-xs text-slate-500">turns</span>
+                        </div>
+                    </div>
+
+                    <!-- Interior Walls -->
+                    <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3">
+                        <div class="text-xs text-slate-400 mb-1">Wall Segments</div>
+                        <div class="flex items-baseline gap-1.5">
+                            <span id="metricWallCount" class="text-xl font-bold font-mono text-indigo-400">--</span>
+                            <span class="text-xs text-slate-500">walls</span>
+                        </div>
+                    </div>
+
+                    <!-- Player Progress -->
+                    <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3">
+                        <div class="text-xs text-slate-400 mb-1">Your Moves</div>
+                        <div class="flex items-baseline gap-1.5">
+                            <span id="metricPlayerSteps" class="text-xl font-bold font-mono text-emerald-400">0</span>
+                            <span class="text-xs text-slate-500">steps</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Navigation Instructions & Legend -->
+            <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+                <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Controls &amp; Legend</h2>
+                
+                <!-- Legend Items -->
+                <div class="grid grid-cols-2 gap-2.5 text-xs text-slate-300">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3.5 h-3.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
+                        <span>Start / Player</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3.5 h-3.5 rounded-md bg-rose-500 shadow-[0_0_8px_#f43f5e]"></span>
+                        <span>Target Goal</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3.5 h-1 rounded-full bg-sky-400/70"></span>
+                        <span>Your Trail</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3.5 h-1 rounded-full bg-amber-400"></span>
+                        <span>Optimal Solution</span>
+                    </div>
+                </div>
+
+                <!-- Input Instructions -->
+                <div class="border-t border-slate-800 pt-3 text-xs text-slate-400 space-y-1.5">
+                    <p><strong class="text-slate-200">Keyboard:</strong> Use <kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] font-mono">W A S D</kbd> or <kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] font-mono">Arrow Keys</kbd></p>
+                    <p><strong class="text-slate-200">Mouse / Touch:</strong> Click/tap any reachable corridor cell, drag/swipe along paths, or use the D-pad below.</p>
+                </div>
+            </section>
+        </aside>
+
+        <!-- Right Main Area: Interactive Labyrinth Viewport (8 Columns on Desktop) -->
+        <section class="lg:col-span-8 flex flex-col items-center order-1 lg:order-2 w-full">
+            <div class="w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-3 sm:p-5 shadow-2xl flex flex-col items-center relative">
+                
+                <!-- Victory Banner Overlay (Hidden until goal reached) -->
+                <div id="victoryBanner" class="hidden w-full mb-4 px-4 py-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-2.5">
+                        <span class="text-xl">🏆</span>
+                        <div>
+                            <h3 class="text-sm font-bold text-emerald-300">Labyrinth Solved!</h3>
+                            <p id="victoryStats" class="text-xs text-emerald-200/80">You reached the goal in 0 steps.</p>
+                        </div>
+                    </div>
+                    <button id="nextLevelBtn" class="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs transition cursor-pointer">
+                        Next Level →
+                    </button>
+                </div>
+
+                <!-- Responsive Canvas Wrapper -->
+                <div id="canvasContainer" class="w-full max-w-[680px] aspect-square flex items-center justify-center rounded-xl overflow-hidden bg-slate-950 border border-slate-800/90 shadow-inner relative">
+                    <canvas id="mazeCanvas" class="block w-full h-full cursor-pointer"></canvas>
+                </div>
+
+                <!-- On-Screen Touch / Mouse D-Pad for Mobile & Accessibility -->
+                <div class="mt-4 flex flex-col items-center sm:hidden">
+                    <div class="grid grid-cols-3 gap-2 w-36">
+                        <div></div>
+                        <button data-dir="0,-1" class="dpad-btn p-3 rounded-xl bg-slate-800 active:bg-sky-500 active:text-slate-950 border border-slate-700 flex items-center justify-center text-slate-200 shadow" aria-label="Move Up">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+                        </button>
+                        <div></div>
+                        <button data-dir="-1,0" class="dpad-btn p-3 rounded-xl bg-slate-800 active:bg-sky-500 active:text-slate-950 border border-slate-700 flex items-center justify-center text-slate-200 shadow" aria-label="Move Left">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                        </button>
+                        <button data-dir="0,1" class="dpad-btn p-3 rounded-xl bg-slate-800 active:bg-sky-500 active:text-slate-950 border border-slate-700 flex items-center justify-center text-slate-200 shadow" aria-label="Move Down">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <button data-dir="1,0" class="dpad-btn p-3 rounded-xl bg-slate-800 active:bg-sky-500 active:text-slate-950 border border-slate-700 flex items-center justify-center text-slate-200 shadow" aria-label="Move Right">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Core Application Script -->
+    <script>
+        /**
+         * Labyrinth Architect
+         * Generates perfect mazes with adjustable complexity (grid size + winding factor),
+         * computes shortest path + turn counts via BFS, and supports multi-modal navigation.
+         */
+        (() => {
+            // --- DOM Elements ---
+            const canvas = document.getElementById('mazeCanvas');
+            const ctx = canvas.getContext('2d');
+            const canvasContainer = document.getElementById('canvasContainer');
+
+            const complexitySlider = document.getElementById('complexitySlider');
+            const difficultyLabel = document.getElementById('difficultyLabel');
+            const gridSizeDisplay = document.getElementById('gridSizeDisplay');
+
+            const generateBtn = document.getElementById('generateBtn');
+            const toggleSolutionBtn = document.getElementById('toggleSolutionBtn');
+            const solutionBtnText = document.getElementById('solutionBtnText');
+            const resetPlayerBtn = document.getElementById('resetPlayerBtn');
+            const nextLevelBtn = document.getElementById('nextLevelBtn');
+
+            const metricPathLength = document.getElementById('metricPathLength');
+            const metricTurnCount = document.getElementById('metricTurnCount');
+            const metricWallCount = document.getElementById('metricWallCount');
+            const metricPlayerSteps = document.getElementById('metricPlayerSteps');
+
+            const statusBadge = document.getElementById('statusBadge');
+            const statusText = document.getElementById('statusText');
+            const victoryBanner = document.getElementById('victoryBanner');
+            const victoryStats = document.getElementById('victoryStats');
+
+            // --- Maze State ---
+            let cols = 19;
+            let rows = 19;
+            let grid = []; // 2D array of Cell objects
+            let startCell = { x: 0, y: 0 };
+            let goalCell = { x: 18, y: 18 };
+
+            // Solution & Metrics
+            let solutionPath = []; // Array of {x, y}
+            let solutionTurns = 0;
+            let totalWalls = 0;
+            let showSolution = false;
+
+            // Player Navigation State
+            let player = { x: 0, y: 0 };
+            let playerHistory = []; // Array of {x, y} representing player's current trail
+            let playerSteps = 0;
+            let hasWon = false;
+
+            // Pointer Dragging State
+            let isPointerDown = false;
+
+            // Complexity Level Presets (1 to 10)
+            // Controls both grid dimensions and "windingProbability" (higher = more turns & twists)
+            const COMPLEXITY_CONFIG = {
+                1:  { size: 9,  label: 'Trivial (Lvl 1)',    winding: 0.20 },
+                2:  { size: 11, label: 'Easy (Lvl 2)',       winding: 0.30 },
+                3:  { size: 13, label: 'Casual (Lvl 3)',     winding: 0.40 },
+                4:  { size: 16, label: 'Moderate (Lvl 4)',   winding: 0.50 },
+                5:  { size: 19, label: 'Balanced (Lvl 5)',   winding: 0.60 },
+                6:  { size: 23, label: 'Challenging (Lvl 6)',winding: 0.70 },
+                7:  { size: 27, label: 'Hard (Lvl 7)',       winding: 0.78 },
+                8:  { size: 31, label: 'Intense (Lvl 8)',    winding: 0.85 },
+                9:  { size: 35, label: 'Expert (Lvl 9)',     winding: 0.92 },
+                10: { size: 41, label: 'Labyrinthine (Lvl 10)', winding: 0.98 }
+            };
+
+            // Directions helper: Top, Right, Bottom, Left
+            const DIRS = [
+                { name: 'top',    dx: 0,  dy: -1, opposite: 'bottom' },
+                { name: 'right',  dx: 1,  dy: 0,  opposite: 'left' },
+                { name: 'bottom', dx: 0,  dy: 1,  opposite: 'top' },
+                { name: 'left',   dx: -1, dy: 0,  opposite: 'right' }
+            ];
+
+            /**
+             * Cell Structure for Maze Grid
+             */
+            class Cell {
+                constructor(x, y) {
+                    this.x = x;
+                    this.y = y;
+                    this.visited = false;
+                    // Walls on each side of the cell
+                    this.walls = {
+                        top: true,
+                        right: true,
+                        bottom: true,
+                        left: true
+                    };
+                }
+            }
+
+            /**
+             * Generates a labyrinth using Recursive Backtracker with directional bias
+             * to control the number of turns and path tortuosity based on complexity.
+             */
+            function generateLabyrinth() {
+                try {
+                    const level = parseInt(complexitySlider.value, 10) || 5;
+                    const config = COMPLEXITY_CONFIG[level];
+
+                    cols = config.size;
+                    rows = config.size;
+
+                    // Update UI labels
+                    difficultyLabel.textContent = config.label;
+                    gridSizeDisplay.textContent = `${cols} × ${rows} Grid`;
+
+                    // Initialize fresh 2D grid
+                    grid = Array.from({ length: rows }, (_, y) =>
+                        Array.from({ length: cols }, (_, x) => new Cell(x, y))
+                    );
+
+                    // Iterative DFS Stack (avoids call stack overflow on large grids)
+                    const stack = [];
+                    const start = grid[0][0];
+                    start.visited = true;
+                    stack.push({ cell: start, lastDir: null });
+
+                    while (stack.length > 0) {
+                        const currentEntry = stack[stack.length - 1];
+                        const current = currentEntry.cell;
+                        const lastDir = currentEntry.lastDir;
+
+                        // Find unvisited neighbors
+                        const unvisitedNeighbors = [];
+                        for (const dir of DIRS) {
+                            const nx = current.x + dir.dx;
+                            const ny = current.y + dir.dy;
+                            if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && !grid[ny][nx].visited) {
+                                unvisitedNeighbors.push({ neighbor: grid[ny][nx], dir });
+                            }
+                        }
+
+                        if (unvisitedNeighbors.length > 0) {
+                            let chosen;
+
+                            // Apply winding bias:
+                            // High complexity favors changing direction (creating more turns & corners).
+                            // Low complexity favors continuing straight when possible.
+                            if (lastDir && unvisitedNeighbors.length > 1) {
+                                const turnOptions = unvisitedNeighbors.filter(n => n.dir.name !== lastDir.name);
+                                const straightOption = unvisitedNeighbors.find(n => n.dir.name === lastDir.name);
+
+                                if (Math.random() < config.winding && turnOptions.length > 0) {
+                                    // Pick a turn
+                                    chosen = turnOptions[Math.floor(Math.random() * turnOptions.length)];
+                                } else if (straightOption) {
+                                    // Go straight
+                                    chosen = straightOption;
+                                } else {
+                                    chosen = unvisitedNeighbors[Math.floor(Math.random() * unvisitedNeighbors.length)];
+                                }
+                            } else {
+                                chosen = unvisitedNeighbors[Math.floor(Math.random() * unvisitedNeighbors.length)];
+                            }
+
+                            // Knock down wall between current cell and chosen neighbor
+                            current.walls[chosen.dir.name] = false;
+                            chosen.neighbor.walls[chosen.dir.opposite] = false;
+
+                            chosen.neighbor.visited = true;
+                            stack.push({ cell: chosen.neighbor, lastDir: chosen.dir });
+                        } else {
+                            stack.pop();
+                        }
+                    }
+
+                    // Set Start (Top-Left) and Goal (Bottom-Right)
+                    startCell = { x: 0, y: 0 };
+                    goalCell = { x: cols - 1, y: rows - 1 };
+
+                    // Compute Shortest Path & Structural Metrics
+                    solveShortestPath();
+                    calculateWallMetrics();
+
+                    // Reset player state & render
+                    resetPlayerState();
+                    resizeAndRender();
+                } catch (err) {
+                    console.error('Error generating labyrinth:', err);
+                }
+            }
+
+            /**
+             * Uses Breadth-First Search (BFS) to find the exact shortest path
+             * from startCell to goalCell and counts the number of 90-degree turns.
+             */
+            function solveShortestPath() {
+                const queue = [{ x: startCell.x, y: startCell.y }];
+                const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+                const parentMap = Array.from({ length: rows }, () => Array(cols).fill(null));
+
+                visited[startCell.y][startCell.x] = true;
+
+                while (queue.length > 0) {
+                    const curr = queue.shift();
+                    if (curr.x === goalCell.x && curr.y === goalCell.y) {
+                        break;
+                    }
+
+                    const cell = grid[curr.y][curr.x];
+                    for (const dir of DIRS) {
+                        if (!cell.walls[dir.name]) {
+                            const nx = curr.x + dir.dx;
+                            const ny = curr.y + dir.dy;
+                            if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && !visited[ny][nx]) {
+                                visited[ny][nx] = true;
+                                parentMap[ny][nx] = curr;
+                                queue.push({ x: nx, y: ny });
+                            }
+                        }
+                    }
+                }
+
+                // Reconstruct path from Goal back to Start
+                const path = [];
+                let trace = goalCell;
+                while (trace) {
+                    path.push({ x: trace.x, y: trace.y });
+                    trace = parentMap[trace.y][trace.x];
+                }
+                solutionPath = path.reverse();
+
+                // Count turns along the optimal path
+                let turns = 0;
+                for (let i = 1; i < solutionPath.length - 1; i++) {
+                    const prev = solutionPath[i - 1];
+                    const curr = solutionPath[i];
+                    const next = solutionPath[i + 1];
+
+                    const dx1 = curr.x - prev.x;
+                    const dy1 = curr.y - prev.y;
+                    const dx2 = next.x - curr.x;
+                    const dy2 = next.y - curr.y;
+
+                    if (dx1 !== dx2 || dy1 !== dy2) {
+                        turns++;
+                    }
+                }
+                solutionTurns = turns;
+
+                // Update Metrics UI
+                metricPathLength.textContent = Math.max(0, solutionPath.length - 1);
+                metricTurnCount.textContent = solutionTurns;
+            }
+
+            /**
+             * Counts the total number of unique interior wall segments in the labyrinth.
+             */
+            function calculateWallMetrics() {
+                let walls = 0;
+                for (let y = 0; y < rows; y++) {
+                    for (let x = 0; x < cols; x++) {
+                        // Count right walls (excluding outer right border)
+                        if (x < cols - 1 && grid[y][x].walls.right) walls++;
+                        // Count bottom walls (excluding outer bottom border)
+                        if (y < rows - 1 && grid[y][x].walls.bottom) walls++;
+                    }
+                }
+                totalWalls = walls;
+                metricWallCount.textContent = totalWalls;
+            }
+
+            /**
+             * Resets player position to Start and clears victory state.
+             */
+            function resetPlayerState() {
+                player = { x: startCell.x, y: startCell.y };
+                playerHistory = [{ x: startCell.x, y: startCell.y }];
+                playerSteps = 0;
+                hasWon = false;
+
+                metricPlayerSteps.textContent = '0';
+                victoryBanner.classList.add('hidden');
+                statusText.textContent = 'Navigate to the Goal';
+                statusBadge.className = 'px-3 py-1.5 rounded-full text-xs font-medium bg-slate-800/90 border border-slate-700 text-slate-300 flex items-center gap-2 transition-all';
+            }
+
+            /**
+             * Attempts to move the player by (dx, dy) if no wall blocks the path.
+             */
+            function movePlayer(dx, dy) {
+                if (hasWon) return false;
+
+                const currentCell = grid[player.y][player.x];
+                let blocked = true;
+
+                if (dx === 0 && dy === -1 && !currentCell.walls.top) blocked = false;
+                if (dx === 1 && dy === 0 && !currentCell.walls.right) blocked = false;
+                if (dx === 0 && dy === 1 && !currentCell.walls.bottom) blocked = false;
+                if (dx === -1 && dy === 0 && !currentCell.walls.left) blocked = false;
+
+                if (blocked) return false;
+
+                const nextX = player.x + dx;
+                const nextY = player.y + dy;
+
+                if (nextX < 0 || nextX >= cols || nextY < 0 || nextY >= rows) return false;
+
+                player.x = nextX;
+                player.y = nextY;
+                playerSteps++;
+                metricPlayerSteps.textContent = playerSteps;
+
+                // Smart breadcrumb trail: if backtracking to previous cell, pop the trail
+                if (
+                    playerHistory.length >= 2 &&
+                    playerHistory[playerHistory.length - 2].x === nextX &&
+                    playerHistory[playerHistory.length - 2].y === nextY
+                ) {
+                    playerHistory.pop();
+                } else {
+                    playerHistory.push({ x: nextX, y: nextY });
+                }
+
+                // Check Goal Condition
+                if (player.x === goalCell.x && player.y === goalCell.y) {
+                    handleVictory();
+                }
+
+                renderMaze();
+                return true;
+            }
+
+            /**
+             * Finds a direct straight-line corridor or shortest path to a clicked/tapped cell
+             * if it is reachable via a straight line or immediate neighbor.
+             */
+            function handleCellTarget(targetX, targetY) {
+                if (hasWon) return;
+                if (targetX < 0 || targetX >= cols || targetY < 0 || targetY >= rows) return;
+                if (targetX === player.x && targetY === player.y) return;
+
+                // 1. If adjacent cell, move 1 step
+                const dx = targetX - player.x;
+                const dy = targetY - player.y;
+                if (Math.abs(dx) + Math.abs(dy) === 1) {
+                    movePlayer(dx, dy);
+                    return;
+                }
+
+                // 2. If along the same row or column with an unobstructed corridor, slide there
+                if (dx === 0 || dy === 0) {
+                    const stepX = Math.sign(dx);
+                    const stepY = Math.sign(dy);
+                    let cx = player.x;
+                    let cy = player.y;
+                    let canReach = true;
+
+                    while (cx !== targetX || cy !== targetY) {
+                        const cell = grid[cy][cx];
+                        if (stepX === 1 && cell.walls.right) { canReach = false; break; }
+                        if (stepX === -1 && cell.walls.left) { canReach = false; break; }
+                        if (stepY === 1 && cell.walls.bottom) { canReach = false; break; }
+                        if (stepY === -1 && cell.walls.top) { canReach = false; break; }
+                        cx += stepX;
+                        cy += stepY;
+                    }
+
+                    if (canReach) {
+                        while (player.x !== targetX || player.y !== targetY) {
+                            if (!movePlayer(stepX, stepY)) break;
+                        }
+                    }
+                }
+            }
+
+            /**
+             * Handles Goal Reached state
+             */
+            function handleVictory() {
+                hasWon = true;
+                const optimalSteps = Math.max(1, solutionPath.length - 1);
+                const efficiency = Math.min(100, Math.round((optimalSteps / playerSteps) * 100));
+
+                victoryStats.textContent = `Completed in ${playerSteps} steps (Optimal: ${optimalSteps} steps • ${efficiency}% efficiency).`;
+                victoryBanner.classList.remove('hidden');
+
+                statusText.textContent = 'Goal Reached!';
+                statusBadge.className = 'px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 flex items-center gap-2 transition-all';
+            }
+
+            /**
+             * Dynamically resizes the HTML5 Canvas to match its responsive container
+             * with crisp HiDPI (Retina) scaling.
+             */
+            function resizeAndRender() {
+                const rect = canvasContainer.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+                const size = Math.floor(rect.width);
+
+                if (size <= 0) return;
+
+                canvas.width = size * dpr;
+                canvas.height = size * dpr;
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+                renderMaze(size);
+            }
+
+            /**
+             * Renders the labyrinth, player trail, optional solution path, start/goal markers, and player avatar.
+             */
+            function renderMaze(logicalSize) {
+                const width = logicalSize || canvasContainer.getBoundingClientRect().width;
+                const height = width;
+                const padding = Math.max(12, Math.floor(width * 0.03));
+                const drawableSize = width - padding * 2;
+                const cellSize = drawableSize / cols;
+
+                // Clear background
+                ctx.fillStyle = '#090d16';
+                ctx.fillRect(0, 0, width, height);
+
+                // Subtle grid floor background
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(padding, padding, drawableSize, drawableSize);
+
+                // Highlight Start & Goal Cell Tints
+                ctx.fillStyle = 'rgba(16, 185, 129, 0.14)';
+                ctx.fillRect(
+                    padding + startCell.x * cellSize,
+                    padding + startCell.y * cellSize,
+                    cellSize,
+                    cellSize
+                );
+
+                ctx.fillStyle = 'rgba(244, 63, 94, 0.16)';
+                ctx.fillRect(
+                    padding + goalCell.x * cellSize,
+                    padding + goalCell.y * cellSize,
+                    cellSize,
+                    cellSize
+                );
+
+                // 1. Draw Shortest Solution Overlay (if toggled ON)
+                if (showSolution && solutionPath.length > 1) {
+                    ctx.save();
+                    ctx.strokeStyle = '#fbbf24'; // Amber-400
+                    ctx.lineWidth = Math.max(2, cellSize * 0.24);
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.shadowColor = 'rgba(251, 191, 36, 0.55)';
+                    ctx.shadowBlur = 8;
+
+                    ctx.beginPath();
+                    solutionPath.forEach((pt, idx) => {
+                        const cx = padding + (pt.x + 0.5) * cellSize;
+                        const cy = padding + (pt.y + 0.5) * cellSize;
+                        if (idx === 0) ctx.moveTo(cx, cy);
+                        else ctx.lineTo(cx, cy);
+                    });
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // 2. Draw Player Breadcrumb Trail
+                if (playerHistory.length > 1) {
+                    ctx.save();
+                    ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)'; // Sky-400
+                    ctx.lineWidth = Math.max(2, cellSize * 0.22);
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+
+                    ctx.beginPath();
+                    playerHistory.forEach((pt, idx) => {
+                        const cx = padding + (pt.x + 0.5) * cellSize;
+                        const cy = padding + (pt.y + 0.5) * cellSize;
+                        if (idx === 0) ctx.moveTo(cx, cy);
+                        else ctx.lineTo(cx, cy);
+                    });
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // 3. Draw Labyrinth Walls
+                ctx.save();
+                ctx.strokeStyle = '#64748b'; // Slate-500 for crisp contrast
+                ctx.lineWidth = Math.max(1.5, Math.min(3.5, cellSize * 0.12));
+                ctx.lineCap = 'round';
+
+                ctx.beginPath();
+                for (let y = 0; y < rows; y++) {
+                    for (let x = 0; x < cols; x++) {
+                        const cell = grid[y][x];
+                        const x1 = padding + x * cellSize;
+                        const y1 = padding + y * cellSize;
+                        const x2 = x1 + cellSize;
+                        const y2 = y1 + cellSize;
+
+                        if (cell.walls.top) {
+                            ctx.moveTo(x1, y1);
+                            ctx.lineTo(x2, y1);
+                        }
+                        if (cell.walls.right) {
+                            ctx.moveTo(x2, y1);
+                            ctx.lineTo(x2, y2);
+                        }
+                        if (cell.walls.bottom) {
+                            ctx.moveTo(x1, y2);
+                            ctx.lineTo(x2, y2);
+                        }
+                        if (cell.walls.left) {
+                            ctx.moveTo(x1, y1);
+                            ctx.lineTo(x1, y2);
+                        }
+                    }
+                }
+                ctx.stroke();
+                ctx.restore();
+
+                // 4. Draw Outer Border Accent
+                ctx.save();
+                ctx.strokeStyle = '#94a3b8'; // Slate-400
+                ctx.lineWidth = Math.max(2, Math.min(4, cellSize * 0.14));
+                ctx.strokeRect(padding, padding, drawableSize, drawableSize);
+                ctx.restore();
+
+                // 5. Draw Goal Flag / Beacon
+                const gx = padding + (goalCell.x + 0.5) * cellSize;
+                const gy = padding + (goalCell.y + 0.5) * cellSize;
+                const goalRadius = Math.max(4, cellSize * 0.28);
+
+                ctx.save();
+                ctx.fillStyle = '#f43f5e'; // Rose-500
+                ctx.shadowColor = 'rgba(244, 63, 94, 0.8)';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.roundRect(gx - goalRadius, gy - goalRadius, goalRadius * 2, goalRadius * 2, Math.max(2, goalRadius * 0.35));
+                ctx.fill();
+                ctx.restore();
+
+                // 6. Draw Player Token
+                const px = padding + (player.x + 0.5) * cellSize;
+                const py = padding + (player.y + 0.5) * cellSize;
+                const playerRadius = Math.max(4.5, cellSize * 0.31);
+
+                ctx.save();
+                ctx.fillStyle = '#34d399'; // Emerald-400
+                ctx.shadowColor = 'rgba(52, 211, 153, 0.9)';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc(px, py, playerRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Inner bright core
+                ctx.fillStyle = '#ecfdf5';
+                ctx.beginPath();
+                ctx.arc(px, py, playerRadius * 0.42, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            /**
+             * Converts pointer coordinates on the canvas into grid cell coordinates (x, y)
+             */
+            function getCellFromPointerEvent(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+                const width = rect.width;
+                const padding = Math.max(12, Math.floor(width * 0.03));
+                const drawableSize = width - padding * 2;
+                const cellSize = drawableSize / cols;
+
+                const relX = clientX - rect.left - padding;
+                const relY = clientY - rect.top - padding;
+
+                const gx = Math.floor(relX / cellSize);
+                const gy = Math.floor(relY / cellSize);
+
+                return { x: gx, y: gy };
+            }
+
+            // --- Event Listeners ---
+
+            // 1. Complexity Slider Change -> Live Labyrinth Regeneration
+            complexitySlider.addEventListener('input', () => {
+                generateLabyrinth();
+            });
+
+            // 2. Generate New Labyrinth Button
+            generateBtn.addEventListener('click', () => {
+                generateLabyrinth();
+            });
+
+            // 3. Toggle Shortest Solution Path Overlay
+            toggleSolutionBtn.addEventListener('click', () => {
+                showSolution = !showSolution;
+                toggleSolutionBtn.setAttribute('aria-pressed', String(showSolution));
+
+                if (showSolution) {
+                    solutionBtnText.textContent = 'Hide Shortest Solution';
+                    toggleSolutionBtn.classList.remove('bg-slate-800', 'text-slate-200', 'border-slate-700');
+                    toggleSolutionBtn.classList.add('bg-amber-500/20', 'text-amber-300', 'border-amber-500/50');
+                } else {
+                    solutionBtnText.textContent = 'Show Shortest Solution';
+                    toggleSolutionBtn.classList.add('bg-slate-800', 'text-slate-200', 'border-slate-700');
+                    toggleSolutionBtn.classList.remove('bg-amber-500/20', 'text-amber-300', 'border-amber-500/50');
+                }
+                renderMaze();
+            });
+
+            // 4. Reset Player Button
+            resetPlayerBtn.addEventListener('click', () => {
+                resetPlayerState();
+                renderMaze();
+            });
+
+            // 5. Next Level Button (from Victory Banner)
+            nextLevelBtn.addEventListener('click', () => {
+                const currentVal = parseInt(complexitySlider.value, 10);
+                if (currentVal < 10) {
+                    complexitySlider.value = currentVal + 1;
+                }
+                generateLabyrinth();
+            });
+
+            // 6. Keyboard Navigation (Arrow Keys + WASD)
+            window.addEventListener('keydown', (e) => {
+                // Ignore if user is adjusting the range slider directly with Left/Right keys
+                if (document.activeElement === complexitySlider && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                    return;
+                }
+
+                let moved = false;
+                switch (e.key) {
+                    case 'ArrowUp':
+                    case 'w':
+                    case 'W':
+                        moved = movePlayer(0, -1);
+                        e.preventDefault();
+                        break;
+                    case 'ArrowDown':
+                    case 's':
+                    case 'S':
+                        moved = movePlayer(0, 1);
+                        e.preventDefault();
+                        break;
+                    case 'ArrowLeft':
+                    case 'a':
+                    case 'A':
+                        moved = movePlayer(-1, 0);
+                        e.preventDefault();
+                        break;
+                    case 'ArrowRight':
+                    case 'd':
+                    case 'D':
+                        moved = movePlayer(1, 0);
+                        e.preventDefault();
+                        break;
+                }
+            });
+
+            // 7. Mouse & Touch Canvas Interaction (Click-to-slide & Drag-to-trace)
+            canvas.addEventListener('pointerdown', (e) => {
+                isPointerDown = true;
+                canvas.setPointerCapture(e.pointerId);
+                const cell = getCellFromPointerEvent(e);
+                handleCellTarget(cell.x, cell.y);
+            });
+
+            canvas.addEventListener('pointermove', (e) => {
+                if (!isPointerDown) return;
+                const cell = getCellFromPointerEvent(e);
+                // When dragging, step cell-by-cell smoothly
+                const dx = cell.x - player.x;
+                const dy = cell.y - player.y;
+                if (Math.abs(dx) + Math.abs(dy) === 1) {
+                    movePlayer(dx, dy);
+                }
+            });
+
+            canvas.addEventListener('pointerup', (e) => {
+                isPointerDown = false;
+                if (canvas.hasPointerCapture(e.pointerId)) {
+                    canvas.releasePointerCapture(e.pointerId);
+                }
+            });
+
+            canvas.addEventListener('pointercancel', () => {
+                isPointerDown = false;
+            });
+
+            // 8. On-Screen Mobile D-Pad Buttons
+            document.querySelectorAll('.dpad-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const [dx, dy] = btn.dataset.dir.split(',').map(Number);
+                    movePlayer(dx, dy);
+                });
+            });
+
+            // 9. Responsive Resize Observer
+            window.addEventListener('resize', () => {
+                resizeAndRender();
+            });
+
+            // Initialize Application on Load
+            window.addEventListener('DOMContentLoaded', () => {
+                generateLabyrinth();
+            });
+        })();
+    </script>
+</body>
+</html>
