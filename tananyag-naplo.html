@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tananyag napló</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0905;
+  --gold:#e9b949;
+  --gold-hi:#ffe08a;
+  --gold-dim:#8a6420;
+  --brown:#5a3a16;
+  --brown-hi:#744b1c;
+  --ink:#eadfc6;
+  --ink-dim:#a8997a;
+  --display:"Cinzel","Trajan Pro","Georgia",serif;
+  --text:"Source Sans 3","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{
+  margin:0;padding:1.6rem clamp(1rem,3vw,2.5rem) 4rem;
+  background:var(--bg);color:var(--ink);
+  font-family:var(--text);font-size:1.0625rem;line-height:1.6;
+  min-height:100vh;
+}
+/* subtle diagonal grain over everything, so labels on borders blend in */
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:50;
+  background:repeating-linear-gradient(135deg,rgba(255,215,130,.028) 0 2px,transparent 2px 5px);
+}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
+
+/* grade selector */
+.grades{display:flex;justify-content:center;flex-wrap:wrap;gap:1rem;margin:0 0 1.8rem}
+.grade-btn{
+  min-width:68px;height:68px;padding:0 .9rem;
+  font-family:var(--display);font-weight:700;font-size:1.9rem;color:var(--gold);
+  background:linear-gradient(180deg,var(--brown-hi),var(--brown));
+  border:2px solid var(--gold-dim);border-radius:10px;
+  box-shadow:inset 0 1px 0 rgba(255,224,138,.25);
+}
+.grade-btn.wide{font-size:1.15rem}
+.grade-btn:hover{border-color:var(--gold)}
+.grade-btn[aria-pressed="true"]{
+  color:#2a1a05;border-color:var(--gold-hi);
+  background:linear-gradient(180deg,#fff0b8,var(--gold) 55%,#c98f1f);
+  box-shadow:0 0 22px rgba(233,185,73,.45);
+}
+
+/* topic filter */
+.tags{display:flex;justify-content:center;flex-wrap:wrap;gap:.65rem;max-width:1100px;margin:0 auto 1.2rem}
+.tag-btn{
+  padding:.38rem .95rem;
+  font-family:var(--display);font-weight:700;font-size:.82rem;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--gold);background:#120d07;border:1px solid #5b4118;border-radius:6px;
+}
+.tag-btn::before{content:"◆";font-size:.6rem;margin-right:.5rem;color:var(--gold-dim);vertical-align:.12em}
+.tag-btn:hover{border-color:var(--gold-dim)}
+.tag-btn[aria-pressed="true"]{
+  color:var(--gold-hi);border-color:var(--gold-hi);background:#1d1409;
+  box-shadow:0 0 12px rgba(233,185,73,.25);
+}
+.tag-btn[aria-pressed="true"]::before{color:var(--gold-hi)}
+
+/* status line */
+.status{
+  display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:.4rem 1.2rem;
+  margin:0 0 2.4rem;color:var(--ink-dim);font-size:.92rem;
+}
+.link-btn{background:none;border:none;padding:.1rem .2rem;color:var(--gold);text-decoration:underline;text-underline-offset:3px}
+.link-btn:hover{color:var(--gold-hi)}
+
+/* boxes */
+.row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2.2rem;margin:0 0 2.4rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:2.4rem 2.2rem}
+.box{
+  position:relative;display:flex;flex-direction:column;gap:.9rem;
+  padding:1.7rem 1.3rem 1.15rem;
+  border:2px solid var(--gold);border-radius:8px;
+  outline:1px solid var(--gold-dim);outline-offset:5px;
+  background:linear-gradient(180deg,var(--bg) 0,#160f07 100%);
+}
+.box .date,.box .grade{
+  position:absolute;top:calc(-.85rem - 1px);
+  padding:0 .55rem;background:var(--bg);
+  font-family:var(--display);line-height:1.7rem;
+}
+.box .date{left:1rem;color:var(--gold);font-size:1.05rem;font-weight:500}
+.box .grade{right:1rem;color:var(--ink-dim);font-size:.85rem}
+.box p{margin:0;white-space:pre-line;overflow-wrap:anywhere}
+.box .mini-tags{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:auto;padding-top:.2rem}
+.mini{
+  padding:.05rem .55rem;font-size:.85rem;color:var(--ink-dim);
+  background:rgba(233,185,73,.07);border:1px solid transparent;border-radius:4px;
+}
+.mini:hover{color:var(--gold)}
+.mini.on{color:var(--gold-hi);border-color:var(--gold-dim)}
+.empty-slot{border:1px dashed rgba(233,185,73,.16);border-radius:8px;min-height:3.5rem}
+
+.note{max-width:560px;margin:3rem auto;text-align:center;color:var(--ink-dim)}
+.note strong{display:block;margin-bottom:.4rem;color:var(--ink);font-weight:600}
+
+@media (max-width:1100px){
+  .row{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .empty-slot{display:none}
+}
+@media (max-width:640px){
+  .row{grid-template-columns:1fr}
+  .grid{grid-template-columns:1fr}
+  .grade-btn{min-width:58px;height:58px;font-size:1.6rem}
+}
+</style>
+</head>
+<body>
+<h1 class="sr">Tananyag napló</h1>
+<nav class="grades" id="grades" aria-label="Évfolyam"></nav>
+<nav class="tags" id="tags" aria-label="Téma"></nav>
+<div class="status" id="status"></div>
+<main id="out"></main>
+
+<script>
+/* ---------- BEÁLLÍTÁSOK ---------- */
+const CONFIG = {
+  SHEET_ID: "1qfx7N5FJdLi4tRj1xEZiRVQsc8LzCWQUaTH6sqXbDe8",
+  SHEET_NAME: "Munkalap1",      // a munkalap (fül) neve
+  GRADES: [5, 6, 7, 8]          // B, C, D, E oszlop sorrendben
+};
+
+/*PARSE-START*/
+function pad(n){ return String(n).padStart(2, "0"); }
+
+function parseDate(raw){
+  const s = (raw || "").trim();
+  if (!s) return null;
+  const parts = s.replace(/\.$/, "").split(/[-.\/\s]+/).filter(Boolean);
+  if (parts.length !== 3) return null;
+  const n = parts.map(Number);
+  if (n.some(isNaN)) return null;
+  let y, m, d;
+  if (parts[0].length === 4) [y, m, d] = n;
+  else if (parts[2].length === 4){
+    if (s.includes("/")) [m, d, y] = n; else [d, m, y] = n;
+  } else { [y, m, d] = n; y += 2000; }
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+  return { key: y*10000 + m*100 + d, label: y + "." + pad(m) + "." + pad(d) };
+}
+
+function parseCell(raw){
+  const t = (raw || "").replace(/\r/g, "").trim();
+  if (!t) return null;
+  const body = [], tags = [];
+  t.split("\n").forEach(line => {
+    const m = /(^|\s)#/.exec(line);
+    if (!m){ body.push(line.trimEnd()); return; }
+    const head = line.slice(0, m.index).trimEnd();
+    if (head) body.push(head);
+    line.slice(m.index).split("#").forEach(piece => {
+      piece.split(/[,;]/).forEach(x => {
+        const k = x.trim().toLocaleLowerCase("hu");
+        if (k && !tags.includes(k)) tags.push(k);
+      });
+    });
+  });
+  const text = body.join("\n").trim();
+  if (!text && !tags.length) return null;
+  return { text, tags };
+}
+
+function parseSheet(rows, grades){
+  const out = [];
+  rows.forEach((r, i) => {
+    if (i === 0 && /^d[aá]tum/i.test((r[0] || "").trim())) return;
+    const cells = {}; let any = false;
+    grades.forEach((g, j) => { const c = parseCell(r[j + 1]); if (c){ cells[g] = c; any = true; } });
+    if (!any) return;
+    const d = parseDate(r[0]);
+    out.push({ key: d ? d.key : null, label: d ? d.label : (r[0] || "").trim(), cells });
+  });
+  return out;
+}
+/*PARSE-END*/
+
+/* ---------- ÁLLAPOT ---------- */
+const state = { grade: "all", tags: new Set(), order: "desc" };
+let data = [], loadedAt = null, loadError = false, loading = true;
+
+const $ = id => document.getElementById(id);
+function el(tag, cls, text){
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+const cap = s => s.charAt(0).toLocaleUpperCase("hu") + s.slice(1);
+
+/* ---------- BETÖLTÉS ---------- */
+/* script-elemes (JSONP) lekérés: nem függ a CORS-tól, fájlból megnyitva is működik */
+function fetchSheet(sheetName){
+  return new Promise((resolve, reject) => {
+    const cb = "__sheetCb" + Date.now() + Math.floor(Math.random() * 1e6);
+    const s = document.createElement("script");
+    let done = false, timer;
+    const finish = (fn, v) => {
+      if (done) return; done = true;
+      clearTimeout(timer); delete window[cb]; s.remove(); fn(v);
+    };
+    timer = setTimeout(() => finish(reject, new Error(
+      "időtúllépés – a Google nem adatot küldött (a megosztás nem „bárki, aki rendelkezik a linkkel”, vagy bejelentkezést kér)")), 12000);
+    window[cb] = resp => {
+      if (!resp || resp.status !== "ok"){
+        const m = ((resp && resp.errors) || []).map(e => e.detailed_message || e.message).join("; ");
+        return finish(reject, new Error(m || "ismeretlen hiba a Google válaszában"));
+      }
+      const rows = resp.table.rows.map(r => (r.c || []).map((c, j) => {
+        if (!c) return "";
+        const v = j === 0 ? (c.f != null ? c.f : c.v) : (c.v != null ? c.v : c.f);
+        return v == null ? "" : String(v);
+      }));
+      finish(resolve, rows);
+    };
+    s.onerror = () => finish(reject, new Error("a kérés nem érte el a Google-t (hálózat?)"));
+    s.src = "https://docs.google.com/spreadsheets/d/" + CONFIG.SHEET_ID + "/gviz/tq" +
+      "?tqx=out:json;responseHandler:" + cb + "&headers=1" +
+      (sheetName ? "&sheet=" + encodeURIComponent(sheetName) : "") + "&_=" + Date.now();
+    document.head.append(s);
+  });
+}
+
+async function load(){
+  loading = true; loadError = false; render();
+  try{
+    let rows;
+    try { rows = await fetchSheet(CONFIG.SHEET_NAME); }
+    catch (e1){ console.warn("Munkalap név szerint nem sikerült:", e1); rows = await fetchSheet(""); }
+    data = parseSheet(rows, CONFIG.GRADES);
+    loadedAt = new Date();
+  } catch (e){
+    console.error(e); loadError = e.message || String(e);
+  }
+  loading = false; render();
+}
+
+/* ---------- MEGJELENÍTÉS ---------- */
+function matches(cell){
+  return !!cell && (state.tags.size === 0 || cell.tags.some(t => state.tags.has(t)));
+}
+
+function toggleTag(k){
+  state.tags.has(k) ? state.tags.delete(k) : state.tags.add(k);
+  render();
+}
+
+function buildBox(row, g){
+  const cell = row.cells[g];
+  const box = el("article", "box");
+  box.append(el("span", "date", row.label), el("span", "grade", g + ". évf."));
+  if (cell.text) box.append(el("p", null, cell.text));
+  if (cell.tags.length){
+    const wrap = el("div", "mini-tags");
+    cell.tags.forEach(k => {
+      const b = el("button", "mini" + (state.tags.has(k) ? " on" : ""), "#" + k);
+      b.type = "button";
+      b.title = "Szűrés erre a témára";
+      b.addEventListener("click", () => toggleTag(k));
+      wrap.append(b);
+    });
+    box.append(wrap);
+  }
+  return box;
+}
+
+function renderGradeButtons(){
+  const nav = $("grades"); nav.replaceChildren();
+  [["all", "Mind"], ...CONFIG.GRADES.map(g => [g, g + "."])].forEach(([v, label]) => {
+    const b = el("button", "grade-btn" + (v === "all" ? " wide" : ""), label);
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(state.grade === v));
+    b.addEventListener("click", () => { state.grade = v; render(); });
+    nav.append(b);
+  });
+}
+
+function render(){
+  renderGradeButtons();
+  const grades = state.grade === "all" ? CONFIG.GRADES : [state.grade];
+
+  /* témák: csak azok, amelyek a kiválasztott évfolyam(ok)ban előfordulnak */
+  const available = new Set();
+  data.forEach(r => grades.forEach(g => r.cells[g] && r.cells[g].tags.forEach(t => available.add(t))));
+  [...state.tags].forEach(t => { if (!available.has(t)) state.tags.delete(t); });
+
+  const tagNav = $("tags"); tagNav.replaceChildren();
+  const all = el("button", "tag-btn", "Összes");
+  all.type = "button";
+  all.setAttribute("aria-pressed", String(state.tags.size === 0));
+  all.addEventListener("click", () => { state.tags.clear(); render(); });
+  tagNav.append(all);
+  [...available].sort((a, b) => a.localeCompare(b, "hu")).forEach(k => {
+    const b = el("button", "tag-btn", cap(k));
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(state.tags.has(k)));
+    b.addEventListener("click", () => toggleTag(k));
+    tagNav.append(b);
+  });
+
+  const out = $("out"); out.replaceChildren();
+  const status = $("status"); status.replaceChildren();
+
+  if (loading){ out.append(note("Betöltés…")); return; }
+  if (loadError){
+    out.append(note("Nem sikerült betölteni a táblázatot.",
+      "Részlet: " + loadError));
+    const retry = el("button", "link-btn", "Újrapróbálás");
+    retry.type = "button"; retry.addEventListener("click", load);
+    out.lastChild.append(el("br"), retry);
+    return;
+  }
+
+  const dir = state.order === "desc" ? -1 : 1;
+  const rows = data.slice().sort((a, b) => {
+    if (a.key == null && b.key == null) return 0;
+    if (a.key == null) return 1;
+    if (b.key == null) return -1;
+    return dir * (a.key - b.key);
+  });
+
+  let count = 0;
+  if (state.grade === "all"){
+    rows.forEach(r => {
+      if (!grades.some(g => matches(r.cells[g]))) return;
+      const wrap = el("section", "row");
+      grades.forEach(g => {
+        if (matches(r.cells[g])){ wrap.append(buildBox(r, g)); count++; }
+        else wrap.append(el("div", "empty-slot"));
+      });
+      out.append(wrap);
+    });
+  } else {
+    const grid = el("section", "grid");
+    rows.forEach(r => {
+      if (matches(r.cells[state.grade])){ grid.append(buildBox(r, state.grade)); count++; }
+    });
+    if (count) out.append(grid);
+  }
+
+  if (!count){
+    const n = note("Nincs találat.", data.length ? "Próbálj másik témát vagy évfolyamot." : "A táblázatban még nincs bejegyzés.");
+    out.append(n);
+  }
+
+  status.append(el("span", null, count + " bejegyzés" + (loadedAt ? " · frissítve: " + pad(loadedAt.getHours()) + ":" + pad(loadedAt.getMinutes()) : "")));
+  const sort = el("button", "link-btn", state.order === "desc" ? "Legújabb elöl" : "Legrégebbi elöl");
+  sort.type = "button";
+  sort.addEventListener("click", () => { state.order = state.order === "desc" ? "asc" : "desc"; render(); });
+  const refresh = el("button", "link-btn", "Frissítés");
+  refresh.type = "button"; refresh.addEventListener("click", load);
+  status.append(sort, refresh);
+}
+
+function note(title, sub){
+  const d = el("div", "note");
+  d.append(el("strong", null, title));
+  if (sub) d.append(document.createTextNode(sub));
+  return d;
+}
+
+load();
+</script>
+</body>
+</html>
