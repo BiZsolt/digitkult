@@ -159,7 +159,7 @@ const FORM = {
 const LIVES = 3;                 // lives per game
 const LEVELS = 26;               // A-Z
 const FULL_AT = 10;              // the 10th game (J) already has the maximum grid
-const SNAKE_SPEED = 55;          // cells / second
+const SNAKE_SPEED = 41;          // cells / second (was 55; 25 % slower)
 const LONG_PRESS_MS = 380;       // hold time that shows the route
 const MOVE_SLOP = 9;             // px of movement that turns a press into a drag
 const WRONG_CODE_LOCK_MS = 2000; // pause after a wrong code
@@ -289,84 +289,12 @@ function pickW(weights, rng) {
   return weights.length - 1;
 }
 
-/* ---- Step 1: tile the whole blob with random winding paths (direction-free) ---- */
-function tileBlob(N, blob, rng) {
+/* ---- Peel the board from the outside in, growing every snake on the fly.
+   A snake head always sits on a cell that is the last remaining cell of its row/column
+   in the head's direction, so at the moment of removal its ray is free. The removal order is
+   therefore a valid solution, every blob cell gets covered, and no snake has to be cut. ---- */
+function peelGrow(N, blob, rng) {
   const n = N * N;
-  const free = new Uint8Array(blob);
-  const lk0 = new Int32Array(n).fill(-1), lk1 = new Int32Array(n).fill(-1);
-  const freeCells = [], pos = new Int32Array(n).fill(-1);
-  for (let i = 0; i < n; i++) if (free[i]) { pos[i] = freeCells.length; freeCells.push(i); }
-  function take(i) {
-    free[i] = 0;
-    const p = pos[i], last = freeCells.pop();
-    if (last !== i) { freeCells[p] = last; pos[last] = p; }
-    pos[i] = -1;
-  }
-  function link(a, b) {
-    if (lk0[a] < 0) lk0[a] = b; else lk1[a] = b;
-    if (lk0[b] < 0) lk0[b] = a; else lk1[b] = a;
-  }
-  function freeDeg(i) {
-    const x = i % N, y = (i / N) | 0;
-    let c = 0;
-    for (let d = 0; d < 4; d++) {
-      const nx = x + DIRS[d][0], ny = y + DIRS[d][1];
-      if (nx >= 0 && ny >= 0 && nx < N && ny < N && free[ny * N + nx]) c++;
-    }
-    return c;
-  }
-  const meanExtra = 2.4 + N / 18, Lmax = Math.round(6 + N * 0.55);
-  while (freeCells.length) {
-    // start at a "dead-end-like" cell: fewest free neighbours among a few samples
-    let seed = -1, bd = 9;
-    for (let k = 0; k < 8; k++) {
-      const c = freeCells[(rng() * freeCells.length) | 0];
-      const dg = freeDeg(c);
-      if (dg < bd) { bd = dg; seed = c; }
-    }
-    take(seed);
-    let len = 2 + Math.floor(-Math.log(1 - rng()) * meanExtra);
-    if (len > Lmax) len = Lmax;
-    let cur = seed, pdx = 0, pdy = 0, cnt = 1;
-    while (cnt < len) {
-      const cx = cur % N, cy = (cur / N) | 0;
-      const cand = [], w = [];
-      for (let d = 0; d < 4; d++) {
-        const nx = cx + DIRS[d][0], ny = cy + DIRS[d][1];
-        if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
-        const ni = ny * N + nx;
-        if (!free[ni]) continue;
-        cand.push(ni);
-        w.push(1 + (3 - freeDeg(ni)) * 1.4 + (DIRS[d][0] === pdx && DIRS[d][1] === pdy ? 0.4 : 0));
-      }
-      if (!cand.length) break;
-      const nx = cand[pickW(w, rng)];
-      take(nx); link(cur, nx);
-      pdx = (nx % N) - cx; pdy = ((nx / N) | 0) - cy;
-      cur = nx; cnt++;
-    }
-  }
-  // merge lone cells into a neighbouring path end where possible
-  for (let i = 0; i < n; i++) {
-    if (!blob[i] || lk0[i] >= 0) continue;
-    const x = i % N, y = (i / N) | 0, ends = [];
-    for (let d = 0; d < 4; d++) {
-      const nx = x + DIRS[d][0], ny = y + DIRS[d][1];
-      if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
-      const ni = ny * N + nx;
-      if (blob[ni] && lk1[ni] < 0) ends.push(ni);
-    }
-    if (ends.length) link(i, ends[(rng() * ends.length) | 0]);
-  }
-  return { lk0: lk0, lk1: lk1 };
-}
-
-/* ---- Step 2: peel the board from the outside in. Every piece removed is, at that
-   moment, a snake with a free ray -> the removal order is a valid solution.
-   When no whole path end has a free ray, a path is cut at an extreme cell. ---- */
-function peelBoard(N, blob, tiling, rng) {
-  const n = N * N;
-  const lk0 = tiling.lk0, lk1 = tiling.lk1;
   const inR = new Uint8Array(blob);
   let remaining = 0;
   for (let i = 0; i < n; i++) if (inR[i]) remaining++;
@@ -383,46 +311,116 @@ function peelBoard(N, blob, tiling, rng) {
     cmin[x] = a; cmax[x] = b;
   }
   for (let i = 0; i < N; i++) { calcRow(i); calcCol(i); }
-  function unlink(a, b) { // remove b from a's links
-    if (lk0[a] === b) { lk0[a] = lk1[a]; lk1[a] = -1; } else if (lk1[a] === b) lk1[a] = -1;
+
+  const MINLEN = 5;
+  const meanExtra = 0.6 + N / 11, Lmax = Math.round(8 + N * 0.8);
+  const longChance = Math.min(0.3, 0.06 + N / 250);
+  const mark = new Uint8Array(n);
+  const vis = new Int32Array(n), fq = new Int32Array(64);
+  let stamp = 1;
+  function rDeg(i) { // remaining neighbours that are not part of the snake being grown
+    const x = i % N, y = (i / N) | 0;
+    let c = 0;
+    for (let d = 0; d < 4; d++) {
+      const nx = x + DIRS[d][0], ny = y + DIRS[d][1];
+      if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+      const ni = ny * N + nx;
+      if (inR[ni] && !mark[ni]) c++;
+    }
+    return c;
   }
+  function targetLen() {
+    let len = MINLEN + Math.floor(-Math.log(1 - rng()) * meanExtra);
+    if (rng() < longChance) len = Math.floor(len * (1.6 + rng() * 1.8));   // extra-long snakes
+    return Math.min(len, Lmax);
+  }
+  function grow(c, d, target) {
+    const cells = [c];
+    mark[c] = 1;
+    const dx = DIRS[d][0], dy = DIRS[d][1];
+    const x = c % N, y = (c / N) | 0;
+    const nx = x - dx, ny = y - dy;
+    if (target >= 2 && nx >= 0 && ny >= 0 && nx < N && ny < N && inR[ny * N + nx]) {
+      let cur = ny * N + nx;
+      cells.push(cur); mark[cur] = 1;
+      let pdx = -dx, pdy = -dy;
+      while (cells.length < target) {
+        const cx = cur % N, cy = (cur / N) | 0;
+        const cand = [], w = [];
+        for (let k = 0; k < 4; k++) {
+          const ax = cx + DIRS[k][0], ay = cy + DIRS[k][1];
+          if (ax < 0 || ay < 0 || ax >= N || ay >= N) continue;
+          const ai = ay * N + ax;
+          if (!inR[ai] || mark[ai]) continue;
+          cand.push({ i: ai, k: k });
+          w.push(1 + (3 - rDeg(ai)) * 1.4 + (DIRS[k][0] === pdx && DIRS[k][1] === pdy ? 0.4 : 0));
+        }
+        if (!cand.length) break;
+        const p = cand[pickW(w, rng)];
+        cells.push(p.i); mark[p.i] = 1;
+        pdx = DIRS[p.k][0]; pdy = DIRS[p.k][1]; cur = p.i;
+      }
+    }
+    // small pockets of remaining cells that this snake would cut off (they would become tiny snakes)
+    let iso = 0;
+    const CAP = MINLEN + 2;
+    for (let i = 0; i < cells.length; i++) {
+      const cx = cells[i] % N, cy = (cells[i] / N) | 0;
+      for (let k = 0; k < 4; k++) {
+        const ax = cx + DIRS[k][0], ay = cy + DIRS[k][1];
+        if (ax < 0 || ay < 0 || ax >= N || ay >= N) continue;
+        const ai = ay * N + ax;
+        if (!inR[ai] || mark[ai] || vis[ai] === stamp) continue;
+        // bounded flood fill
+        let qh = 0, qt = 0;
+        fq[qt++] = ai; vis[ai] = stamp;
+        let big = false;
+        while (qh < qt) {
+          const c = fq[qh++], qx = c % N, qy = (c / N) | 0;
+          for (let m = 0; m < 4; m++) {
+            const bx = qx + DIRS[m][0], by = qy + DIRS[m][1];
+            if (bx < 0 || by < 0 || bx >= N || by >= N) continue;
+            const bi = by * N + bx;
+            if (!inR[bi] || mark[bi] || vis[bi] === stamp) continue;
+            vis[bi] = stamp; fq[qt++] = bi;
+            if (qt >= CAP) { big = true; break; }
+          }
+          if (big) break;
+        }
+        if (!big) iso += (MINLEN - qt) * 0.5 + 1;
+        else stamp++;            // component is large: let other neighbours re-test it cheaply
+      }
+    }
+    stamp++;
+    for (let i = 0; i < cells.length; i++) mark[cells[i]] = 0;
+    return { cells: cells, iso: iso };
+  }
+
   const pieces = [];
-  let cuts = 0;
   while (remaining > 0) {
-    const endOpts = [], cutOpts = [];
+    const opts = [];
     function consider(c, d) {
       if (c < 0) return;
       const x = c % N, y = (c / N) | 0;
-      if (lk0[c] < 0) { endOpts.push({ c: c, d: d, m: -1 }); return; }
-      const mx = x - DIRS[d][0], my = y - DIRS[d][1];
-      if (mx < 0 || my < 0 || mx >= N || my >= N) return;
-      const m = my * N + mx;
-      if (lk0[c] === m || lk1[c] === m) {
-        if (lk1[c] < 0) endOpts.push({ c: c, d: d, m: m }); else cutOpts.push({ c: c, d: d, m: m });
-      }
+      const nx = x - DIRS[d][0], ny = y - DIRS[d][1];
+      const neckOk = nx >= 0 && ny >= 0 && nx < N && ny < N && inR[ny * N + nx];
+      if (neckOk || rDeg(c) === 0) opts.push({ c: c, d: d });
     }
     for (let i = 0; i < N; i++) {
       consider(rmax[i], 0); consider(rmin[i], 2);
       consider(cmax[i], 1); consider(cmin[i], 3);
     }
-    let opt;
-    if (endOpts.length && (rng() > 0.04 || !cutOpts.length)) opt = endOpts[(rng() * endOpts.length) | 0];
-    else { opt = cutOpts[(rng() * cutOpts.length) | 0]; cuts++; }
-    // collect the piece: head c, then along the neck side
-    const cells = [opt.c];
-    if (opt.m >= 0) {
-      let prev = opt.c, cur = opt.m;
-      for (;;) {
-        cells.push(cur);
-        const nx = lk0[cur] === prev ? lk1[cur] : lk0[cur];
-        if (nx < 0) break;
-        prev = cur; cur = nx;
-      }
-      if (lk1[opt.c] >= 0) { // cut: the other side stays
-        const q = lk0[opt.c] === opt.m ? lk1[opt.c] : lk0[opt.c];
-        unlink(q, opt.c);
-      }
+    let best = null, bs = -1e9;
+    const T = Math.min(28, opts.length);
+    for (let t = 0; t < T; t++) {
+      const o = opts[(rng() * opts.length) | 0];
+      const target = targetLen();
+      const r = grow(o.c, o.d, target);
+      const L = r.cells.length;
+      const sc = Math.min(L, target) - 10 * r.iso - (L < MINLEN ? 12 : 0);
+      if (sc > bs) { bs = sc; best = { o: o, cells: r.cells }; }
     }
+    const cells = best.cells;
     const rows = new Set(), cols = new Set();
     for (let i = 0; i < cells.length; i++) {
       inR[cells[i]] = 0; remaining--;
@@ -430,21 +428,20 @@ function peelBoard(N, blob, tiling, rng) {
     }
     rows.forEach(calcRow); cols.forEach(calcCol);
     cells.reverse(); // tail -> head
-    pieces.push({ cells: cells, dx: DIRS[opt.d][0], dy: DIRS[opt.d][1], len: cells.length });
+    pieces.push({ cells: cells, dx: DIRS[best.o.d][0], dy: DIRS[best.o.d][1], len: cells.length });
   }
-  return { pieces: pieces, cuts: cuts };
+  return { pieces: pieces, cuts: 0 };
 }
 
 function fillSnakes(N, blob, rng) {
-  const tiling = tileBlob(N, blob, rng);
-  const pr = peelBoard(N, blob, tiling, rng);
+  const pr = peelGrow(N, blob, rng);
   const owner = new Int32Array(N * N).fill(-1);
   const snakes = pr.pieces;
   for (let s = 0; s < snakes.length; s++) {
     snakes[s].id = s;
     for (let i = 0; i < snakes[s].len; i++) owner[snakes[s].cells[i]] = s;
   }
-  return { owner: owner, snakes: snakes, blob: new Uint8Array(blob), leftover: 0, cuts: pr.cuts };
+  return { owner: owner, snakes: snakes, blob: new Uint8Array(blob), leftover: 0, cuts: 0 };
 }
 
 /* the pieces are stored in removal order: removing them one by one must always work */
@@ -658,7 +655,11 @@ function startLevel(i) {
   const N = sizeFor(i);
   const g = generateLevel(N, Math.random, PALETTE.length);
   const byColor = PALETTE.map(() => []);
-  g.snakes.forEach((s) => byColor[s.ci].push(s));
+  g.snakes.forEach((s) => {
+    byColor[s.ci].push(s);
+    s.pts = new Float32Array(s.len * 2);
+    for (let i = 0; i < s.len; i++) { s.pts[i * 2] = s.xs[i] + 0.5; s.pts[i * 2 + 1] = s.ys[i] + 0.5; }
+  });
   L = { N: N, owner: g.owner, snakes: g.snakes, blob: g.blob, byColor: byColor,
         remaining: g.snakes.length, lives: LIVES, mistakes: 0, ms: 0,
         done: false, dead: false, anims: [], hover: -1, preview: -1, ring: null, flash: null };
@@ -930,27 +931,42 @@ function frame(now) {
   if (more) raf = requestAnimationFrame(frame); else lastFrame = 0;
 }
 
-function addPoly(s) {
-  ctx.moveTo(s.xs[0] + 0.5, s.ys[0] + 0.5);
-  for (let i = 1; i < s.len; i++) ctx.lineTo(s.xs[i] + 0.5, s.ys[i] + 0.5);
-  if (s.len === 1) ctx.lineTo(s.xs[0] + 0.501, s.ys[0] + 0.5);
+const TUBE = 0.56, CORE = 0.2, OUTLINE = 0.7;
+/* smooth path through cell centres: straight runs stay straight, bends get a rounded corner (radius 0.5 cell) */
+function trace(t, p, n) {
+  t.moveTo(p[0], p[1]);
+  if (n === 1) { t.lineTo(p[0] + 0.001, p[1]); return; }
+  t.lineTo((p[0] + p[2]) / 2, (p[1] + p[3]) / 2);
+  for (let i = 1; i < n - 1; i++) t.quadraticCurveTo(p[i * 2], p[i * 2 + 1], (p[i * 2] + p[i * 2 + 2]) / 2, (p[i * 2 + 1] + p[i * 2 + 3]) / 2);
+  t.lineTo(p[(n - 1) * 2], p[(n - 1) * 2 + 1]);
 }
-function addArrow(hx, hy, dx, dy) {
+function addArrow(t, hx, hy, dx, dy) {
   const px = -dy, py = dx;
-  ctx.moveTo(hx + dx * 0.56, hy + dy * 0.56);
-  ctx.lineTo(hx - dx * 0.04 + px * 0.42, hy - dy * 0.04 + py * 0.42);
-  ctx.lineTo(hx - dx * 0.04 - px * 0.42, hy - dy * 0.04 - py * 0.42);
-  ctx.closePath();
+  t.moveTo(hx + dx * 0.62, hy + dy * 0.62);
+  t.lineTo(hx - dx * 0.06 + px * 0.47, hy - dy * 0.06 + py * 0.47);
+  t.lineTo(hx - dx * 0.06 - px * 0.47, hy - dy * 0.06 - py * 0.47);
+  t.closePath();
 }
 function lighten(hex, a) {
   const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
   const m = (v) => Math.round(v + (255 - v) * a);
   return 'rgb(' + m(r) + ',' + m(g) + ',' + m(b) + ')';
 }
-function strokeSnake(s, color, lw) {
-  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw;
-  ctx.beginPath(); addPoly(s); ctx.stroke();
-  ctx.beginPath(); addArrow(s.xs[s.len - 1] + 0.5, s.ys[s.len - 1] + 0.5, s.dx, s.dy); ctx.fill();
+const LIGHT = PALETTE.map((c) => lighten(c, 0.5));
+/* one tube: dark outline, body colour, light core stripe, arrow head */
+function paintTube(path, arrow, color, light, alpha, grow) {
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = 'rgba(14,8,3,0.55)'; ctx.lineWidth = OUTLINE + grow; ctx.stroke(path);
+  ctx.strokeStyle = color; ctx.lineWidth = TUBE + grow; ctx.stroke(path);
+  ctx.strokeStyle = light; ctx.lineWidth = CORE; ctx.stroke(path);
+  ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineWidth = 0.1; ctx.fill(arrow); ctx.stroke(arrow);
+  ctx.globalAlpha = 1;
+}
+function strokeSnake(s, color, light, alpha, grow) {
+  const path = new Path2D(), arrow = new Path2D();
+  trace(path, s.pts, s.len);
+  addArrow(arrow, s.xs[s.len - 1] + 0.5, s.ys[s.len - 1] + 0.5, s.dx, s.dy);
+  paintTube(path, arrow, color, light, alpha, grow);
 }
 function ptAt(P, M, i) {
   if (i <= 0) return [P[0], P[1]];
@@ -958,22 +974,24 @@ function ptAt(P, M, i) {
   const k = Math.floor(i), f = i - k;
   return [P[k * 2] * (1 - f) + P[k * 2 + 2] * f, P[k * 2 + 1] * (1 - f) + P[k * 2 + 3] * f];
 }
-function drawAnim(a, now) {
+let scratch = new Float32Array(256);
+function drawAnim(a) {
   const s = a.s, P = s.P, M = P.length / 2, len = s.len;
   const i0 = a.t, i1 = a.t + len - 1;
   let alpha = 1;
   if (a.kind === 'out' && a.t > a.r) alpha = Math.max(0, 1 - (a.t - a.r) / len);
   const hot = a.kind === 'bounce' && a.phase === 'back';
-  const col = hot ? '#ff4d3a' : PALETTE[s.ci];
-  ctx.globalAlpha = alpha; ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 0.36;
-  ctx.beginPath();
-  const p0 = ptAt(P, M, i0); ctx.moveTo(p0[0], p0[1]);
-  for (let k = Math.floor(i0) + 1; k < i1; k++) ctx.lineTo(P[k * 2], P[k * 2 + 1]);
-  const p1 = ptAt(P, M, i1); ctx.lineTo(p1[0], p1[1]);
-  if (len === 1) ctx.lineTo(p1[0] + 0.001, p1[1]);
-  ctx.stroke();
-  ctx.beginPath(); addArrow(p1[0], p1[1], s.dx, s.dy); ctx.fill();
-  ctx.globalAlpha = 1;
+  const col = hot ? '#ff4d3a' : PALETTE[s.ci], light = hot ? '#ffb3a8' : LIGHT[s.ci];
+  const need = (len + 4) * 2;
+  if (scratch.length < need) scratch = new Float32Array(need * 2);
+  let n = 0;
+  const p0 = ptAt(P, M, i0); scratch[n++] = p0[0]; scratch[n++] = p0[1];
+  for (let k = Math.floor(i0) + 1; k < i1; k++) { scratch[n++] = P[k * 2]; scratch[n++] = P[k * 2 + 1]; }
+  const p1 = ptAt(P, M, i1); scratch[n++] = p1[0]; scratch[n++] = p1[1];
+  const path = new Path2D(), arrow = new Path2D();
+  trace(path, scratch, n / 2);
+  addArrow(arrow, p1[0], p1[1], s.dx, s.dy);
+  paintTube(path, arrow, col, light, alpha, 0);
 }
 
 function draw(now) {
@@ -996,44 +1014,38 @@ function draw(now) {
     ctx.fill();
   }
 
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 0.36;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   const flashId = (L.flash && now < L.flash.until) ? L.flash.id : -1;
   const special = (s) => s.id === L.hover || s.id === flashId;
   for (let ci = 0; ci < PALETTE.length; ci++) {
     const list = L.byColor[ci];
-    ctx.strokeStyle = PALETTE[ci]; ctx.fillStyle = PALETTE[ci];
-    ctx.beginPath(); let any = false;
+    const path = new Path2D(), arrow = new Path2D();
+    let any = false;
     for (let k = 0; k < list.length; k++) {
       const s = list[k];
       if (!s.alive || s.busy || special(s)) continue;
       if (s.bx1 < x0 || s.bx0 > x1 || s.by1 < y0 || s.by0 > y1) continue;
-      addPoly(s); any = true;
+      trace(path, s.pts, s.len);
+      addArrow(arrow, s.xs[s.len - 1] + 0.5, s.ys[s.len - 1] + 0.5, s.dx, s.dy);
+      any = true;
     }
-    if (!any) continue;
-    ctx.stroke();
-    ctx.beginPath();
-    for (let k = 0; k < list.length; k++) {
-      const s = list[k];
-      if (!s.alive || s.busy || special(s)) continue;
-      if (s.bx1 < x0 || s.bx0 > x1 || s.by1 < y0 || s.by0 > y1) continue;
-      addArrow(s.xs[s.len - 1] + 0.5, s.ys[s.len - 1] + 0.5, s.dx, s.dy);
-    }
-    ctx.fill();
+    if (any) paintTube(path, arrow, PALETTE[ci], LIGHT[ci], 1, 0);
   }
 
   // hovered snake: soft halo + lighter colour
   if (L.hover >= 0) {
     const s = L.snakes[L.hover];
     if (s && s.alive && !s.busy) {
-      ctx.globalAlpha = 0.28; strokeSnake(s, '#ffffff', 0.78); ctx.globalAlpha = 1;
-      strokeSnake(s, lighten(PALETTE[s.ci], 0.35), 0.42);
+      const halo = new Path2D(); trace(halo, s.pts, s.len);
+      ctx.globalAlpha = 0.3; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.95; ctx.stroke(halo); ctx.globalAlpha = 1;
+      strokeSnake(s, lighten(PALETTE[s.ci], 0.3), '#ffffff', 1, 0.04);
     }
   }
   if (flashId >= 0) {
     const s = L.snakes[flashId];
-    if (s && s.alive && !s.busy) strokeSnake(s, '#ff4d3a', 0.42);
+    if (s && s.alive && !s.busy) strokeSnake(s, '#ff4d3a', '#ffb3a8', 1, 0.04);
   }
-  for (let i = 0; i < L.anims.length; i++) drawAnim(L.anims[i], now);
+  for (let i = 0; i < L.anims.length; i++) drawAnim(L.anims[i]);
 
   // route preview
   if (L.preview >= 0) {
