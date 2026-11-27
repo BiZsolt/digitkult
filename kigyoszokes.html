@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Kígyószökés</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg transform='rotate(-45 32 32)'%3E%3Cpath d='M8 22 H42 V13 L58 24 L42 35 V26 H8 Z' fill='%23e53935'/%3E%3Cpath d='M56 42 H22 V51 L6 40 L22 29 V38 H56 Z' fill='%231e88e5'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&display=swap" rel="stylesheet">
@@ -24,6 +25,9 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--cream);font-fami
 #bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px 22px;padding:8px 14px;
   background:linear-gradient(#26170b,#1a1008);border-bottom:2px solid var(--line)}
 .title{font-family:var(--serif);font-weight:900;font-size:18px;color:var(--gold2);letter-spacing:.04em;white-space:nowrap}
+.player-info{display:flex;flex-direction:column;line-height:1.15;padding:3px 10px;background:var(--panel2);border:1px solid var(--line)}
+.player-info b{font-size:13px;color:var(--gold2);white-space:nowrap}
+.player-info span{font-size:11px;color:var(--muted);white-space:nowrap}
 .lvl{display:flex;align-items:center;gap:10px}
 .badge{width:46px;height:46px;display:grid;place-items:center;font-family:var(--serif);font-weight:900;font-size:30px;
   color:var(--gold2);background:var(--panel2);border:2px solid var(--gold);box-shadow:inset 0 0 0 3px var(--panel),0 0 14px rgba(217,164,65,.25)}
@@ -68,6 +72,8 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--cream);font-fami
 .card{width:100%;max-width:480px;max-height:100%;overflow:auto;padding:26px 28px;
   background:linear-gradient(#2a190c,#1a1008);border:2px solid var(--gold);
   box-shadow:inset 0 0 0 4px #1a1008,inset 0 0 0 5px var(--line),0 12px 50px rgba(0,0,0,.7)}
+.card.wide-task{max-width:660px}
+.card.wide-final{max-width:960px;padding:20px 24px}
 .card h1,.card h2{font-family:var(--serif);color:var(--gold2);margin:0 0 12px;font-weight:900;letter-spacing:.03em}
 .card h1{font-size:30px}.card h2{font-size:22px}
 .card p{margin:0 0 12px;line-height:1.5;font-size:15px}
@@ -78,19 +84,21 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--cream);font-fami
 .card input.code{font-family:var(--serif);font-size:24px;letter-spacing:.12em;text-align:center}
 .row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
 .row .btn{flex:1;padding:11px 14px;font-size:14px}
-.stats{display:flex;gap:26px;margin:0 0 14px}
+.stats{display:flex;gap:26px;margin:0 0 14px;flex-wrap:wrap}
 .stats .stat b{font-size:22px}
-.task{margin:8px 0 14px;padding:12px 14px;border:1px solid var(--line);background:#150d07}
-.task .name{font-family:var(--serif);font-weight:900;font-size:26px;color:var(--gold2);word-break:break-word}
-.task small{color:var(--muted);font-size:12px}
+.task{margin:8px 0 14px;padding:14px 16px;border:1px solid var(--line);background:#150d07}
+.task .name{font-family:var(--sans);font-weight:700;font-size:20px;line-height:1.45;color:var(--gold2);word-break:break-word}
+.task small{color:var(--muted);font-size:12px;display:block;margin-bottom:4px}
 .msg{min-height:20px;margin-top:8px;font-size:14px}
 .msg.err{color:var(--danger)}.msg.ok{color:var(--ok)}.msg.wait{color:var(--muted)}
 .shake{animation:shake .4s}
-table.res{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:6px}
-table.res th,table.res td{padding:3px 6px;text-align:right;border-bottom:1px solid #3a2810}
-table.res th:first-child,table.res td:first-child{text-align:left;font-family:var(--serif);font-weight:700;color:var(--gold2)}
-table.res th{color:var(--muted);font-weight:400}
-.resbox{max-height:210px;overflow:auto;margin-bottom:10px;border:1px solid #3a2810}
+table.res{width:100%;border-collapse:collapse;font-size:13.5px}
+table.res th,table.res td{padding:5px 8px;text-align:left;border-bottom:1px solid #3a2810;vertical-align:top}
+table.res th{color:var(--muted);font-weight:600;background:#150d07;position:sticky;top:0}
+table.res td.q-col{color:var(--cream);line-height:1.35}
+table.res td.c-col{font-family:var(--serif);font-weight:700;color:var(--gold2);white-space:nowrap}
+table.res td.num-col{color:var(--muted);white-space:nowrap;width:32px}
+.resbox{max-height:calc(100vh - 230px);overflow:auto;margin-bottom:10px;border:1px solid #3a2810}
 @media (max-width:640px){
   #bar{gap:8px 14px;padding:6px 10px}.title{display:none}
   .badge{width:40px;height:40px;font-size:25px}#lives{font-size:22px}
@@ -105,6 +113,10 @@ table.res th{color:var(--muted);font-weight:400}
 <div id="app">
   <header id="bar">
     <div class="title">Kígyószökés</div>
+    <div class="player-info" id="playerHud" style="display:none">
+      <b id="hudName"></b>
+      <span id="hudCls"></span>
+    </div>
     <div class="lvl">
       <div class="badge" id="badge">A</div>
       <div class="lvlinfo"><b id="lvlTxt">1. játék / 26</b><span id="sizeTxt">10 × 10</span></div>
@@ -116,6 +128,7 @@ table.res th{color:var(--muted);font-weight:400}
     <div class="stat"><small>Összesen</small><b id="totalTxt">00:00</b></div>
     <div class="spacer"></div>
     <button class="btn" id="fitBtn" title="Teljes pálya látszik">Illesztés</button>
+    <button class="btn" id="finishBtn">Befejezés</button>
     <button class="btn" id="resetBtn">Újrakezdés</button>
   </header>
   <div id="strip"></div>
@@ -317,7 +330,7 @@ function peelGrow(N, blob, rng) {
   const mark = new Uint8Array(n);
   const vis = new Int32Array(n), fq = new Int32Array(64);
   let stamp = 1;
-  function rDeg(i) { // remaining neighbours that are not part of the snake being grown
+  function rDeg(i) {
     const x = i % N, y = (i / N) | 0;
     let c = 0;
     for (let d = 0; d < 4; d++) {
@@ -330,7 +343,7 @@ function peelGrow(N, blob, rng) {
   }
   function targetLen() {
     let len = MINLEN + Math.floor(-Math.log(1 - rng()) * meanExtra);
-    if (rng() < longChance) len = Math.floor(len * (1.6 + rng() * 1.8));   // extra-long snakes
+    if (rng() < longChance) len = Math.floor(len * (1.6 + rng() * 1.8));
     return Math.min(len, Lmax);
   }
   function grow(c, d, target) {
@@ -360,7 +373,6 @@ function peelGrow(N, blob, rng) {
         pdx = DIRS[p.k][0]; pdy = DIRS[p.k][1]; cur = p.i;
       }
     }
-    // small pockets of remaining cells that this snake would cut off (they would become tiny snakes)
     let iso = 0;
     const CAP = MINLEN + 2;
     for (let i = 0; i < cells.length; i++) {
@@ -370,7 +382,6 @@ function peelGrow(N, blob, rng) {
         if (ax < 0 || ay < 0 || ax >= N || ay >= N) continue;
         const ai = ay * N + ax;
         if (!inR[ai] || mark[ai] || vis[ai] === stamp) continue;
-        // bounded flood fill
         let qh = 0, qt = 0;
         fq[qt++] = ai; vis[ai] = stamp;
         let big = false;
@@ -387,7 +398,7 @@ function peelGrow(N, blob, rng) {
           if (big) break;
         }
         if (!big) iso += (MINLEN - qt) * 0.5 + 1;
-        else stamp++;            // component is large: let other neighbours re-test it cheaply
+        else stamp++;
       }
     }
     stamp++;
@@ -443,7 +454,6 @@ function fillSnakes(N, blob, rng) {
   return { owner: owner, snakes: snakes, blob: new Uint8Array(blob), leftover: 0, cuts: 0 };
 }
 
-/* the pieces are stored in removal order: removing them one by one must always work */
 function verifySolvable(N, snakes, ownerIn) {
   const owner = new Int32Array(ownerIn);
   for (let s = 0; s < snakes.length; s++) {
@@ -454,8 +464,6 @@ function verifySolvable(N, snakes, ownerIn) {
   return true;
 }
 
-/* one colour per snake; neighbouring snakes get different colours where possible,
-   colours form loose regional patches */
 function assignColors(N, res, rng, nColors) {
   const snakes = res.snakes, owner = res.owner;
   const adj = snakes.map(() => []);
@@ -527,6 +535,7 @@ const S = {
   sheetErr: '',
   player: { name: '', cls: '' },
   level: 0, totalMs: 0, totalMistakes: 0, results: [],
+  answeredTasks: [],           // { question: string, code: string }
   queue: [], lastTask: -1, task: null,
   started: false
 };
@@ -730,8 +739,19 @@ const strip = $('strip');
 LETTERS.forEach((l) => { const sp = document.createElement('span'); sp.textContent = l; strip.appendChild(sp); });
 let hudCache = {};
 function setTxt(id, v) { if (hudCache[id] !== v) { hudCache[id] = v; $(id).textContent = v; } }
+function updatePlayerHud() {
+  const box = $('playerHud');
+  if (S.player.name) {
+    box.style.display = 'flex';
+    setTxt('hudName', S.player.name);
+    setTxt('hudCls', S.player.cls ? ('Osztály: ' + S.player.cls) : '');
+  } else {
+    box.style.display = 'none';
+  }
+}
 function updateHud(force) {
   if (force) hudCache = {};
+  updatePlayerHud();
   if (!L) return;
   setTxt('badge', LETTERS[S.level]);
   setTxt('lvlTxt', (S.level + 1) + '. játék / ' + LEVELS);
@@ -767,8 +787,18 @@ setInterval(function () {
    MODALS
    ===================================================================== */
 const modal = $('modal'), card = $('card');
-function openModal(html) { card.innerHTML = html; modal.classList.add('open'); modalOpen = true; }
-function closeModal() { modal.classList.remove('open'); modalOpen = false; card.innerHTML = ''; }
+function openModal(html, cls) {
+  card.className = 'card' + (cls ? ' ' + cls : '');
+  card.innerHTML = html;
+  modal.classList.add('open');
+  modalOpen = true;
+}
+function closeModal() {
+  modal.classList.remove('open');
+  modalOpen = false;
+  card.className = 'card';
+  card.innerHTML = '';
+}
 
 function showStart() {
   S.started = false;
@@ -799,7 +829,8 @@ function showStart() {
     if (go.disabled) return;
     S.player.name = nm.value.trim(); S.player.cls = cl.value.trim();
     window.__refreshStart = null;
-    S.level = 0; S.totalMs = 0; S.totalMistakes = 0; S.results = []; S.queue = []; S.lastTask = -1;
+    S.level = 0; S.totalMs = 0; S.totalMistakes = 0; S.results = []; S.answeredTasks = []; S.queue = []; S.lastTask = -1;
+    updatePlayerHud();
     closeModal(); S.started = true; startLevel(0);
   };
   go.onclick = begin;
@@ -810,7 +841,7 @@ function showStart() {
 
 function codeBlock(task, btnLabel) {
   return '<div class="task"><small>Feladat</small><div class="name">' + esc(task.name) + '</div></div>' +
-    '<p>Oldd meg a feladatot a táblázatkezelőben (vagy ahogy a tanár kérte), és írd be az eredményt kódként.</p>' +
+    '<p>Írd be a kódot</p>' +
     '<input class="code" id="inCode" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Kód">' +
     '<div class="msg" id="codeMsg"></div>' +
     '<div class="row"><button class="btn primary" id="codeBtn">' + btnLabel + '</button></div>';
@@ -819,7 +850,11 @@ function wireCode(task, onOk) {
   const inp = $('inCode'), btn = $('codeBtn'), msg = $('codeMsg');
   function check() {
     if (btn.disabled) return;
-    if (normCode(inp.value) === normCode(task.code) && inp.value.trim() !== '') { onOk(); return; }
+    if (normCode(inp.value) === normCode(task.code) && inp.value.trim() !== '') {
+      S.answeredTasks.push({ question: task.name, code: task.code });
+      onOk();
+      return;
+    }
     msg.className = 'msg err'; msg.textContent = 'Hibás kód. Ellenőrizd a számítást, és próbáld újra.';
     inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake');
     btn.disabled = true; inp.select();
@@ -839,7 +874,8 @@ function showCompleteModal() {
     '<div class="stat"><small>Hibák</small><b>' + r.mistakes + '</b></div>' +
     '<div class="stat"><small>Összesen</small><b>' + fmt(S.totalMs) + '</b></div></div>' +
     '<p>A következő játékhoz (' + LETTERS[S.level + 1] + ') kód kell.</p>' +
-    codeBlock(S.task, 'Tovább')
+    codeBlock(S.task, 'Tovább'),
+    'wide-task'
   );
   wireCode(S.task, () => { closeModal(); S.level++; startLevel(S.level); });
 }
@@ -849,22 +885,50 @@ function showDeadModal() {
   openModal(
     '<h2>Elfogytak az életeid</h2>' +
     '<p>A játék addig áll, amíg meg nem oldasz egy feladatot. A helyes kóddal visszakapod mind a ' + LIVES + ' életed, és ugyanott folytathatod.</p>' +
-    codeBlock(S.task, 'Folytatás')
+    codeBlock(S.task, 'Folytatás'),
+    'wide-task'
   );
   wireCode(S.task, () => { closeModal(); L.lives = LIVES; L.dead = false; updateHud(true); requestDraw(); });
 }
 
 function showFinalModal() {
   let rows = '';
-  S.results.forEach((r) => { rows += '<tr><td>' + r.letter + '</td><td>' + r.size + '×' + r.size + '</td><td>' + fmt(r.ms) + '</td><td>' + r.mistakes + '</td></tr>'; });
+  if (S.answeredTasks.length) {
+    S.answeredTasks.forEach((item, idx) => {
+      rows += '<tr><td class="num-col">' + (idx + 1) + '.</td><td class="q-col">' + esc(item.question) + '</td><td class="c-col">' + esc(item.code) + '</td></tr>';
+    });
+  } else {
+    rows = '<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:12px">Még nem válaszoltál meg kérdést.</td></tr>';
+  }
+  const clsText = S.player.cls ? (' (' + esc(S.player.cls) + ')') : '';
   openModal(
-    '<h2>Mind a ' + LEVELS + ' játékot megoldottad, ' + esc(S.player.name) + '!</h2>' +
-    '<div class="stats"><div class="stat"><small>Összes idő</small><b>' + fmt(S.totalMs) + '</b></div>' +
-    '<div class="stat"><small>Összes hiba</small><b>' + S.totalMistakes + '</b></div></div>' +
-    '<div class="resbox"><table class="res"><tr><th>Játék</th><th>Pálya</th><th>Idő</th><th>Hiba</th></tr>' + rows + '</table></div>' +
-    '<div class="row"><button class="btn primary" id="againBtn">Új játék</button></div>'
+    '<h2>Játék összesítése</h2>' +
+    '<div class="stats">' +
+      '<div class="stat"><small>Játékos</small><b>' + esc(S.player.name) + clsText + '</b></div>' +
+      '<div class="stat"><small>Teljesített szintek</small><b>' + S.results.length + ' / ' + LEVELS + '</b></div>' +
+      '<div class="stat"><small>Összes idő</small><b>' + fmt(S.totalMs) + '</b></div>' +
+      '<div class="stat"><small>Összes hiba</small><b>' + S.totalMistakes + '</b></div>' +
+    '</div>' +
+    '<div class="resbox"><table class="res"><tr><th>#</th><th>Megválaszolt kérdés / feladat</th><th>Kód</th></tr>' + rows + '</table></div>' +
+    '<div class="row"><button class="btn primary" id="againBtn">Új játék</button></div>',
+    'wide-final'
   );
   $('againBtn').onclick = () => { L = null; showStart(); draw(performance.now()); };
+}
+
+function showFinishConfirm() {
+  if (modalOpen) return;
+  openModal(
+    '<h2>Játék befejezése</h2>' +
+    '<p>Biztosan befejezed most a játékot, és megnyitod az összesítő ablakot?</p>' +
+    '<div class="row"><button class="btn" id="noFinBtn">Mégse</button><button class="btn primary" id="yesFinBtn">Befejezés</button></div>'
+  );
+  $('noFinBtn').onclick = closeModal;
+  $('yesFinBtn').onclick = () => {
+    S.started = false;
+    sendResults('befejezve');
+    showFinalModal();
+  };
 }
 
 function showResetConfirm() {
@@ -872,7 +936,7 @@ function showResetConfirm() {
   openModal('<h2>Újrakezdés</h2><p>Biztosan újrakezded az egész játékot az A szinttől? Az eddigi eredményeid elvesznek.</p>' +
     '<div class="row"><button class="btn" id="noBtn">Mégse</button><button class="btn primary" id="yesBtn">Újrakezdés</button></div>');
   $('noBtn').onclick = closeModal;
-  $('yesBtn').onclick = () => { closeModal(); L = null; S.results = []; S.level = 0; updateStripReset(); showStart(); requestDraw(); };
+  $('yesBtn').onclick = () => { closeModal(); L = null; S.results = []; S.answeredTasks = []; S.level = 0; updateStripReset(); showStart(); requestDraw(); };
 }
 function updateStripReset() { for (const sp of strip.children) sp.className = ''; }
 
@@ -1167,6 +1231,7 @@ canvas.addEventListener('wheel', (e) => {
 $('fitBtn').onclick = () => { if (L) { fitView(); requestDraw(); } };
 $('zin').onclick = () => zoomAt(cw / 2, ch / 2, 1.3);
 $('zout').onclick = () => zoomAt(cw / 2, ch / 2, 1 / 1.3);
+$('finishBtn').onclick = showFinishConfirm;
 $('resetBtn').onclick = showResetConfirm;
 
 /* =====================================================================
