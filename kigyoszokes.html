@@ -53,8 +53,7 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--cream);font-fami
 
 /* ---------- stage ---------- */
 #stage{position:relative;flex:1;min-height:0;background:radial-gradient(ellipse at center,#1b1108 0%,#0d0704 100%)}
-#cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
-#cv.over{cursor:pointer}
+#cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:default}
 #cv.drag{cursor:grabbing}
 #hint{position:absolute;left:12px;bottom:8px;font-size:12px;color:#7f6740;pointer-events:none}
 #pauseNote{position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:6px 14px;font-size:13px;color:#1a0f06;
@@ -931,7 +930,7 @@ function frame(now) {
   if (more) raf = requestAnimationFrame(frame); else lastFrame = 0;
 }
 
-const TUBE = 0.56, CORE = 0.2, OUTLINE = 0.7;
+const TUBE = 0.56;
 /* smooth path through cell centres: straight runs stay straight, bends get a rounded corner (radius 0.5 cell) */
 function trace(t, p, n) {
   t.moveTo(p[0], p[1]);
@@ -952,21 +951,19 @@ function lighten(hex, a) {
   const m = (v) => Math.round(v + (255 - v) * a);
   return 'rgb(' + m(r) + ',' + m(g) + ',' + m(b) + ')';
 }
-const LIGHT = PALETTE.map((c) => lighten(c, 0.5));
-/* one tube: dark outline, body colour, light core stripe, arrow head */
-function paintTube(path, arrow, color, light, alpha, grow) {
+/* one tube: body and arrow head in the same single colour */
+function paintTube(path, arrow, color, alpha, grow) {
   ctx.globalAlpha = alpha;
-  ctx.strokeStyle = 'rgba(14,8,3,0.55)'; ctx.lineWidth = OUTLINE + grow; ctx.stroke(path);
-  ctx.strokeStyle = color; ctx.lineWidth = TUBE + grow; ctx.stroke(path);
-  ctx.strokeStyle = light; ctx.lineWidth = CORE; ctx.stroke(path);
-  ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineWidth = 0.1; ctx.fill(arrow); ctx.stroke(arrow);
+  ctx.strokeStyle = color; ctx.fillStyle = color;
+  ctx.lineWidth = TUBE + grow; ctx.stroke(path);
+  ctx.lineWidth = 0.1; ctx.fill(arrow); ctx.stroke(arrow);
   ctx.globalAlpha = 1;
 }
-function strokeSnake(s, color, light, alpha, grow) {
+function strokeSnake(s, color, alpha, grow) {
   const path = new Path2D(), arrow = new Path2D();
   trace(path, s.pts, s.len);
   addArrow(arrow, s.xs[s.len - 1] + 0.5, s.ys[s.len - 1] + 0.5, s.dx, s.dy);
-  paintTube(path, arrow, color, light, alpha, grow);
+  paintTube(path, arrow, color, alpha, grow);
 }
 function ptAt(P, M, i) {
   if (i <= 0) return [P[0], P[1]];
@@ -981,7 +978,7 @@ function drawAnim(a) {
   let alpha = 1;
   if (a.kind === 'out' && a.t > a.r) alpha = Math.max(0, 1 - (a.t - a.r) / len);
   const hot = a.kind === 'bounce' && a.phase === 'back';
-  const col = hot ? '#ff4d3a' : PALETTE[s.ci], light = hot ? '#ffb3a8' : LIGHT[s.ci];
+  const col = hot ? '#ff4d3a' : PALETTE[s.ci];
   const need = (len + 4) * 2;
   if (scratch.length < need) scratch = new Float32Array(need * 2);
   let n = 0;
@@ -991,7 +988,7 @@ function drawAnim(a) {
   const path = new Path2D(), arrow = new Path2D();
   trace(path, scratch, n / 2);
   addArrow(arrow, p1[0], p1[1], s.dx, s.dy);
-  paintTube(path, arrow, col, light, alpha, 0);
+  paintTube(path, arrow, col, alpha, 0);
 }
 
 function draw(now) {
@@ -1029,7 +1026,7 @@ function draw(now) {
       addArrow(arrow, s.xs[s.len - 1] + 0.5, s.ys[s.len - 1] + 0.5, s.dx, s.dy);
       any = true;
     }
-    if (any) paintTube(path, arrow, PALETTE[ci], LIGHT[ci], 1, 0);
+    if (any) paintTube(path, arrow, PALETTE[ci], 1, 0);
   }
 
   // hovered snake: soft halo + lighter colour
@@ -1037,13 +1034,13 @@ function draw(now) {
     const s = L.snakes[L.hover];
     if (s && s.alive && !s.busy) {
       const halo = new Path2D(); trace(halo, s.pts, s.len);
-      ctx.globalAlpha = 0.3; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.95; ctx.stroke(halo); ctx.globalAlpha = 1;
-      strokeSnake(s, lighten(PALETTE[s.ci], 0.3), '#ffffff', 1, 0.04);
+      ctx.globalAlpha = 0.35; ctx.strokeStyle = lighten(PALETTE[s.ci], 0.5); ctx.lineWidth = 0.95; ctx.stroke(halo); ctx.globalAlpha = 1;
+      strokeSnake(s, PALETTE[s.ci], 1, 0.06);
     }
   }
   if (flashId >= 0) {
     const s = L.snakes[flashId];
-    if (s && s.alive && !s.busy) strokeSnake(s, '#ff4d3a', '#ffb3a8', 1, 0.04);
+    if (s && s.alive && !s.busy) strokeSnake(s, '#ff4d3a', 1, 0.06);
   }
   for (let i = 0; i < L.anims.length; i++) drawAnim(L.anims[i]);
 
@@ -1102,6 +1099,9 @@ canvas.addEventListener('pointerdown', (e) => {
       g.timer = setTimeout(() => {
         if (g && !g.moved && !g.preview) { g.preview = true; L.preview = id; requestDraw(); }
       }, LONG_PRESS_MS);
+    } else {
+      // holding the button on empty ground = grabbing the board: show the hand
+      g.timer = setTimeout(() => { if (g && !g.moved) canvas.classList.add('drag'); }, LONG_PRESS_MS);
     }
   } else if (ptrs.size === 2) {
     if (L) L.preview = -1;
@@ -1117,7 +1117,6 @@ canvas.addEventListener('pointermove', (e) => {
     if (e.pointerType === 'mouse' && L && !modalOpen) {
       const id = snakeAt(p.x, p.y), ok = id >= 0 && L.snakes[id].alive && !L.snakes[id].busy;
       const h = ok ? id : -1;
-      canvas.classList.toggle('over', ok);
       if (h !== L.hover) { L.hover = h; requestDraw(); }
     }
     return;
@@ -1155,7 +1154,7 @@ function pointerEnd(e, cancelled) {
 canvas.addEventListener('pointerup', (e) => pointerEnd(e, false));
 canvas.addEventListener('pointercancel', (e) => pointerEnd(e, true));
 canvas.addEventListener('pointerleave', (e) => {
-  if (e.pointerType === 'mouse' && L && L.hover >= 0 && !ptrs.size) { L.hover = -1; canvas.classList.remove('over'); requestDraw(); }
+  if (e.pointerType === 'mouse' && L && L.hover >= 0 && !ptrs.size) { L.hover = -1; requestDraw(); }
 });
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
